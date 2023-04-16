@@ -2,3 +2,7 @@
 .vs/
 bin/
 obj/
+/src/Pipe Flow Overlay/lib/
+/src/Pipe Flow Overlay/Pipe Flow Overlay/app.config
+/src/Pipe Flow Overlay/Pipe Flow Overlay/mod.yaml
+/src/Pipe Flow Overlay/Pipe Flow Overlay/mod_info.yaml
