@@ -17,14 +17,18 @@ namespace Pipe_Flow_Overlay
         internal static PipeFlowOverlayMod Instance;
         internal HashedString OverlayMode { get; set; }
 
-        private Sprite _flow;
-        private Sprite _noFlow;
         private GameObject _pipeFlowPrefab;
         private ConcurrentBag<GameObject> _flowRenders;
         private ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow> _conduitFlowManagers;
         private ConcurrentDictionary<int, ConduitFlow.FlowDirections> _liquidConduitFlowDirections;
         private ConcurrentDictionary<int, ConduitFlow.FlowDirections> _gasConduitFlowDirections;
         private ConcurrentDictionary<int, SolidConduitFlow.FlowDirection> _solidConduitFlowDirections;
+        private ConcurrentDictionary<string, Sprite> _flowSprites;
+        private Texture2D _rightArrow;
+        private Texture2D _downArrow;
+        private Texture2D _leftArrow;
+        private Texture2D _upArrow;
+        private Texture2D _cross;
 
         public override void OnLoad(Harmony harmony)
         {
@@ -35,13 +39,12 @@ namespace Pipe_Flow_Overlay
 
         internal void Initialize()
         {
-            _flow = LoadSprite(@"Resources\Flow.png");
-            _noFlow = LoadSprite(@"Resources\NoFlow.png");
             _flowRenders = new ConcurrentBag<GameObject>();
             _conduitFlowManagers = new ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow>();
             _liquidConduitFlowDirections = new ConcurrentDictionary<int, ConduitFlow.FlowDirections>();
             _gasConduitFlowDirections = new ConcurrentDictionary<int, ConduitFlow.FlowDirections>();
             _solidConduitFlowDirections = new ConcurrentDictionary<int, SolidConduitFlow.FlowDirection>();
+            LoadInitialFlowSprites();
             _pipeFlowPrefab = new GameObject("PipeFlow");
             _pipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
             _pipeFlowPrefab.SetActive(false);
@@ -50,6 +53,19 @@ namespace Pipe_Flow_Overlay
             image.type = Image.Type.Simple;
             image.raycastTarget = false;
             image.color = Color.white;
+        }
+
+        private void LoadInitialFlowSprites()
+        {
+            const string flowSprite = @"Resources\Flow.png";
+            const string noFlowSprite = @"Resources\NoFlow.png";
+
+            _flowSprites = new ConcurrentDictionary<string, Sprite>();
+            _flowSprites.TryAdd("right", LoadSprite(flowSprite, ref _rightArrow));
+            _flowSprites.TryAdd("down", LoadSprite(flowSprite, ref _downArrow, 1));
+            _flowSprites.TryAdd("left", LoadSprite(flowSprite, ref _leftArrow, 2));
+            _flowSprites.TryAdd("up", LoadSprite(flowSprite, ref _upArrow, 3));
+            _flowSprites.TryAdd("none", LoadSprite(noFlowSprite, ref _cross));
         }
 
         internal void RegisterConduitFlowManager(ConduitFlow.SOAInfo soaInfo, ConduitFlow manager)
@@ -117,36 +133,41 @@ namespace Pipe_Flow_Overlay
 
         private void ProcessConduit(GameObject conduitGO, string flow)
         {
-            bool none = true;
+            Sprite sprite = _flowSprites.GetOrAdd(flow.Trim().ToLower(), GetSprite);
 
-            if (flow.ToLower().Contains("up"))
+            RenderSpriteAtConduit(sprite, conduitGO);
+        }
+
+        private Sprite GetSprite(string flow)
+        {
+            Texture2D texture;
+            if (flow == "none")
             {
-                RenderSpriteAtConduit(_flow, conduitGO, 90f);
-                none = false;
+                texture = _cross;
+            }
+            else
+            {
+                texture = new Texture2D(TextureSize, TextureSize);
+                Color32[] pixels = texture.GetPixels32();
+                for (int i = 0; i < pixels.Length; i++)
+                    pixels[i] = Color.clear;
+                texture.SetPixels32(pixels);
+                texture.Apply();
             }
 
-            if (flow.ToLower().Contains("down"))
-            {
-                RenderSpriteAtConduit(_flow, conduitGO, -90f);
-                none = false;
-            }
+            if (flow.Contains("right"))
+                texture = Merge(texture, _rightArrow);
 
-            if (flow.ToLower().Contains("left"))
-            {
-                RenderSpriteAtConduit(_flow, conduitGO, 180f);
-                none = false;
-            }
+            if (flow.Contains("down"))
+                texture = Merge(texture, _downArrow);
 
-            if (flow.ToLower().Contains("right"))
-            {
-                RenderSpriteAtConduit(_flow, conduitGO);
-                none = false;
-            }
+            if (flow.Contains("left"))
+                texture = Merge(texture, _leftArrow);
 
-            if (none)
-            {
-                RenderSpriteAtConduit(_noFlow, conduitGO);
-            }
+            if (flow.Contains("up"))
+                texture = Merge(texture, _upArrow);
+
+            return CreateSprite(texture);
         }
 
         internal void RenderSpriteAtConduit(Sprite sprite, GameObject conduitGO, float angle = 0)
@@ -195,13 +216,13 @@ namespace Pipe_Flow_Overlay
             _solidConduitFlowDirections.AddOrUpdate(idx, directions, (_, __) => directions);
         }
 
-        private Sprite LoadSprite(string path)
+        private Sprite LoadSprite(string path, ref Texture2D texture, int rotate = 0)
         {
             string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), path);
 
             Debug.Log($"Loading texture from {fullPath}");
 
-            Texture2D texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
+            texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
             {
                 filterMode = FilterMode.Trilinear
             };
@@ -209,9 +230,71 @@ namespace Pipe_Flow_Overlay
             byte[] data = File.ReadAllBytes(fullPath);
             texture.LoadImage(data);
 
+            for (int i = 0; i < rotate; i++)
+                texture = Rotate(texture);
+
+            return CreateSprite(texture);
+        }
+
+        private static Sprite CreateSprite(Texture2D texture)
+        {
             Rect rect = new Rect(0, 0, texture.width, texture.height);
             Vector2 pivot = new Vector2(0.5f, 0.5f);
             return Sprite.Create(texture, rect, pivot, 1f);
+        }
+
+        private Texture2D Rotate(Texture2D originalTexture)
+        {
+            Color32[] original = originalTexture.GetPixels32();
+            Color32[] rotated = new Color32[original.Length];
+
+            int h = originalTexture.height;
+            int w = originalTexture.width;
+
+            for (int i = 0; i < h; i++)
+            {
+                for (int j = 0; j < w; j++)
+                {
+                    int iRotated = (j + 1) * h - i - 1;
+                    int iOriginal = original.Length - 1 - (i * w + j);
+                    rotated[iRotated] = original[iOriginal];
+                }
+            }
+
+            Texture2D rotatedTexture = new Texture2D(h, w);
+            rotatedTexture.SetPixels32(rotated);
+            rotatedTexture.Apply();
+            return rotatedTexture;
+        }
+
+        private Texture2D Merge(Texture2D texture1, Texture2D texture2)
+        {
+            Color32[] colors1 = texture1.GetPixels32();
+            Color32[] colors2 = texture2.GetPixels32();
+            Color32[] merge = new Color32[colors1.Length];
+
+            int h = texture1.height;
+            int w = texture1.width;
+
+            for (int i = 0; i < w; i++)
+            {
+                for (int j = 0; j < h; j++)
+                {
+                    int index = (i + 1) * w - j - 1;
+                    Color32 color1 = colors1[index];
+                    Color32 color2 = colors2[index];
+
+                    if (color1.a > color2.a)
+                        merge[index] = color1;
+                    else
+                        merge[index] = color2;
+                }
+            }
+
+            Texture2D mergeTexture = new Texture2D(w, h);
+            mergeTexture.SetPixels32(merge);
+            mergeTexture.Apply();
+            return mergeTexture;
         }
     }
 }
