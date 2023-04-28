@@ -20,24 +20,62 @@ namespace Pipe_Flow_Overlay
         {
             public static void Postfix(HashedString mode)
             {
-                PipeFlowOverlayMod.Instance.OverlayMode = mode;
+                PipeFlowOverlayMod.Instance.ToggleOverlay(mode);
+            }
+        }
 
-                if (mode == OverlayModes.LiquidConduits.ID)
+        [HarmonyPatch(typeof(Conduit))]
+        [HarmonyPatch("OnSpawn")]
+        public class Conduit_OnSpawn_Patch
+        {
+            public static void Postfix(Conduit __instance)
+            {
+                if (__instance.ConduitType == ConduitType.Liquid)
                 {
-                    PipeFlowOverlayMod.Instance.ShowLiquidConduitOverlay();
+                    PipeFlowOverlayMod.Instance.AddOrUpdateLiquidConduitFlowDirection(__instance.GameObject, ConduitFlow.FlowDirections.None);
                 }
-                else if (mode == OverlayModes.GasConduits.ID)
+                else if (__instance.ConduitType == ConduitType.Gas)
                 {
-                    PipeFlowOverlayMod.Instance.ShowGasConduitOverlay();
+                    PipeFlowOverlayMod.Instance.AddOrUpdateGasConduitFlowDirection(__instance.GameObject, ConduitFlow.FlowDirections.None);
                 }
-                else if (mode == OverlayModes.SolidConveyor.ID)
+            }
+        }
+
+        [HarmonyPatch(typeof(SolidConduit))]
+        [HarmonyPatch("OnSpawn")]
+        public class SolidConduit_OnSpawn_Patch
+        {
+            public static void Postfix(SolidConduit __instance)
+            {
+                PipeFlowOverlayMod.Instance.AddOrUpdateSolidConduitFlowDirection(__instance.gameObject, SolidConduitFlow.FlowDirection.None);
+            }
+        }
+
+        [HarmonyPatch(typeof(Conduit))]
+        [HarmonyPatch("OnCleanUp")]
+        public class Conduit_OnCleanUp_Patch
+        {
+            public static void Postfix(Conduit __instance)
+            {
+                if (__instance.ConduitType == ConduitType.Liquid)
                 {
-                    PipeFlowOverlayMod.Instance.ShowSolidConduitOverlay();
+                    PipeFlowOverlayMod.Instance.RemoveLiquidConduitFlow(__instance.GameObject);
                 }
-                else
+                else if (__instance.ConduitType == ConduitType.Gas)
                 {
-                    PipeFlowOverlayMod.Instance.ClearFlowOverlay();
+                    PipeFlowOverlayMod.Instance.RemoveGasConduitFlow(__instance.GameObject);
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(SolidConduit))]
+        [HarmonyPatch("OnCleanUp")]
+        public class SolidConduit_OnCleanUp_Patch
+        {
+            public static void Postfix(SolidConduit __instance)
+            {
+                PipeFlowOverlayMod.Instance.RemoveSolidConduitFlow(__instance.gameObject);
+
             }
         }
 
@@ -57,10 +95,6 @@ namespace Pipe_Flow_Overlay
                 {
                     PipeFlowOverlayMod.Instance.ClearGasConduitFlowDirections();
                 }
-                else if (manager.conduitType == ConduitType.Solid)
-                {
-                    PipeFlowOverlayMod.Instance.ClearSolidConduitFlowDirections();
-                }
             }
         }
 
@@ -68,7 +102,7 @@ namespace Pipe_Flow_Overlay
         [HarmonyPatch("Clear")]
         public class SolidConduitFlow_SOAInfo_Clear_Patch
         {
-            public static void Postfix(SolidConduitFlow.SOAInfo __instance, SolidConduitFlow manager)
+            public static void Postfix()
             {
                 PipeFlowOverlayMod.Instance.ClearSolidConduitFlowDirections();
             }
@@ -86,13 +120,15 @@ namespace Pipe_Flow_Overlay
                     return;
                 }
 
+                UnityEngine.GameObject conduitGO = __instance.GetConduitGO(idx);
+
                 if (manager.conduitType == ConduitType.Liquid)
                 {
-                    PipeFlowOverlayMod.Instance.AddLiquidConduitFlowDirection(idx, delta);
+                    PipeFlowOverlayMod.Instance.AddOrUpdateLiquidConduitFlowDirection(conduitGO, delta);
                 }
                 else if (manager.conduitType == ConduitType.Gas)
                 {
-                    PipeFlowOverlayMod.Instance.AddGasConduitFlowDirection(idx, delta);
+                    PipeFlowOverlayMod.Instance.AddOrUpdateGasConduitFlowDirection(conduitGO, delta);
                 }
             }
         }
@@ -101,9 +137,9 @@ namespace Pipe_Flow_Overlay
         [HarmonyPatch("SetTargetFlowDirection")]
         public class SolidConduitFlow_SOAInfo_SetTargetFlowDirection_Patch
         {
-            public static void Prefix(int idx, SolidConduitFlow.FlowDirection directions)
+            public static void Prefix(SolidConduitFlow.SOAInfo __instance, int idx, SolidConduitFlow.FlowDirection directions)
             {
-                PipeFlowOverlayMod.Instance.SetSolidConduitFlowDirection(idx, directions);
+                PipeFlowOverlayMod.Instance.AddOrUpdateSolidConduitFlowDirection(__instance.GetConduitGO(idx), directions);
             }
         }
     }

@@ -15,20 +15,14 @@ namespace Pipe_Flow_Overlay
         private const float TextureScale = 0.02f;
 
         internal static PipeFlowOverlayMod Instance;
-        internal HashedString OverlayMode { get; set; }
 
         private GameObject _pipeFlowPrefab;
-        private ConcurrentBag<GameObject> _flowRenders;
         private ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow> _conduitFlowManagers;
-        private ConcurrentDictionary<int, ConduitFlow.FlowDirections> _liquidConduitFlowDirections;
-        private ConcurrentDictionary<int, ConduitFlow.FlowDirections> _gasConduitFlowDirections;
-        private ConcurrentDictionary<int, SolidConduitFlow.FlowDirection> _solidConduitFlowDirections;
-        private ConcurrentDictionary<string, Sprite> _flowSprites;
-        private Texture2D _rightArrow;
-        private Texture2D _downArrow;
-        private Texture2D _leftArrow;
-        private Texture2D _upArrow;
-        private Texture2D _cross;
+        private ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)> _liquidConduitFlowRenders;
+        private ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)> _gasConduitFlowRenders;
+        private ConcurrentDictionary<GameObject, (GameObject pipeFlow, SolidConduitFlow.FlowDirection flow)> _solidConduitFlowRenders;
+        private Dictionary<string, Sprite> _flowSprites;
+        private HashedString _overlayMode;
 
         public override void OnLoad(Harmony harmony)
         {
@@ -39,12 +33,11 @@ namespace Pipe_Flow_Overlay
 
         internal void Initialize()
         {
-            _flowRenders = new ConcurrentBag<GameObject>();
             _conduitFlowManagers = new ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow>();
-            _liquidConduitFlowDirections = new ConcurrentDictionary<int, ConduitFlow.FlowDirections>();
-            _gasConduitFlowDirections = new ConcurrentDictionary<int, ConduitFlow.FlowDirections>();
-            _solidConduitFlowDirections = new ConcurrentDictionary<int, SolidConduitFlow.FlowDirection>();
-            LoadInitialFlowSprites();
+            _liquidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
+            _gasConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
+            _solidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, SolidConduitFlow.FlowDirection flow)>();
+            LoadFlowSprites();
             _pipeFlowPrefab = new GameObject("PipeFlow");
             _pipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
             _pipeFlowPrefab.SetActive(false);
@@ -55,17 +48,69 @@ namespace Pipe_Flow_Overlay
             image.color = Color.white;
         }
 
-        private void LoadInitialFlowSprites()
+        private void LoadFlowSprites()
         {
             const string flowSprite = @"Resources\Flow.png";
             const string noFlowSprite = @"Resources\NoFlow.png";
 
-            _flowSprites = new ConcurrentDictionary<string, Sprite>();
-            _flowSprites.TryAdd("right", LoadSprite(flowSprite, ref _rightArrow));
-            _flowSprites.TryAdd("down", LoadSprite(flowSprite, ref _downArrow, 1));
-            _flowSprites.TryAdd("left", LoadSprite(flowSprite, ref _leftArrow, 2));
-            _flowSprites.TryAdd("up", LoadSprite(flowSprite, ref _upArrow, 3));
-            _flowSprites.TryAdd("none", LoadSprite(noFlowSprite, ref _cross));
+            Texture2D rightArrow = LoadTexture(flowSprite);
+            Texture2D downArrow = LoadTexture(flowSprite, 1);
+            Texture2D leftArrow = LoadTexture(flowSprite, 2);
+            Texture2D upArrow = LoadTexture(flowSprite, 3);
+            Texture2D cross = LoadTexture(noFlowSprite);
+
+            _flowSprites = new Dictionary<string, Sprite>();
+
+            for (int i = 0; i <= (int)ConduitFlow.FlowDirections.All; i++)
+            {
+                string flow = ((ConduitFlow.FlowDirections)i).ToString().ToLower();
+                if (!_flowSprites.ContainsKey(flow))
+                {
+                    Debug.Log($"Generating sprite for flow: {flow}");
+                    _flowSprites.Add(flow, GetSprite(flow));
+                }
+            }
+
+
+            Sprite GetSprite(string flow)
+            {
+                Texture2D texture;
+                if (flow == "none")
+                {
+                    texture = cross;
+                }
+                else
+                {
+                    texture = new Texture2D(TextureSize, TextureSize);
+                    Color32[] pixels = texture.GetPixels32();
+                    for (int i = 0; i < pixels.Length; i++)
+                        pixels[i] = Color.clear;
+                    texture.SetPixels32(pixels);
+                    texture.Apply();
+                }
+
+                if (flow.Contains("right"))
+                {
+                    texture = Merge(texture, rightArrow);
+                }
+
+                if (flow.Contains("down"))
+                {
+                    texture = Merge(texture, downArrow);
+                }
+
+                if (flow.Contains("left"))
+                {
+                    texture = Merge(texture, leftArrow);
+                }
+
+                if (flow.Contains("up"))
+                {
+                    texture = Merge(texture, upArrow);
+                }
+
+                return CreateSprite(texture);
+            }
         }
 
         internal void RegisterConduitFlowManager(ConduitFlow.SOAInfo soaInfo, ConduitFlow manager)
@@ -83,146 +128,122 @@ namespace Pipe_Flow_Overlay
             return null;
         }
 
-        internal void ClearFlowOverlay()
+        internal void ToggleOverlay(HashedString overlayMode)
         {
-            while (_flowRenders.TryTake(out GameObject gameObject))
-                Object.Destroy(gameObject);
+            _overlayMode = overlayMode;
+            Toggle(ref _liquidConduitFlowRenders, _overlayMode == OverlayModes.LiquidConduits.ID);
+            Toggle(ref _gasConduitFlowRenders, _overlayMode == OverlayModes.GasConduits.ID);
+            Toggle(ref _solidConduitFlowRenders, _overlayMode == OverlayModes.SolidConveyor.ID);
         }
 
-        internal void ShowLiquidConduitOverlay()
+        private void Toggle<T>(ref ConcurrentDictionary<GameObject, (GameObject pipeFlow, T flow)> dict, bool active)
         {
-            ClearFlowOverlay();
-
-            ConduitFlow manager = Game.Instance.liquidConduitFlow;
-
-            foreach (KeyValuePair<int, ConduitFlow.FlowDirections> entry in _liquidConduitFlowDirections.ToArray())
+            foreach (KeyValuePair<GameObject, (GameObject pipeFlow, T flow)> entry in dict.ToArray())
             {
-                GameObject conduitGO = manager.soaInfo.GetConduitGO(entry.Key);
-
-                ProcessConduit(conduitGO, entry.Value.ToString());
+                dict.AddOrUpdate(entry.Key, entry.Value /*Should never be hit*/, (_, current) =>
+                {
+                    current.pipeFlow.SetActive(active);
+                    return current;
+                });
             }
-        }
-
-        internal void ShowGasConduitOverlay()
-        {
-            ClearFlowOverlay();
-
-            ConduitFlow manager = Game.Instance.gasConduitFlow;
-
-            foreach (KeyValuePair<int, ConduitFlow.FlowDirections> entry in _gasConduitFlowDirections.ToArray())
-            {
-                GameObject conduitGO = manager.soaInfo.GetConduitGO(entry.Key);
-
-                ProcessConduit(conduitGO, entry.Value.ToString());
-            }
-        }
-
-        internal void ShowSolidConduitOverlay()
-        {
-            ClearFlowOverlay();
-
-            SolidConduitFlow manager = Game.Instance.solidConduitFlow;
-
-            foreach (KeyValuePair<int, SolidConduitFlow.FlowDirection> entry in _solidConduitFlowDirections.ToArray())
-            {
-                GameObject conduitGO = manager.GetSOAInfo().GetConduitGO(entry.Key);
-
-                ProcessConduit(conduitGO, entry.Value.ToString());
-            }
-        }
-
-        private void ProcessConduit(GameObject conduitGO, string flow)
-        {
-            Sprite sprite = _flowSprites.GetOrAdd(flow.Trim().ToLower(), GetSprite);
-
-            RenderSpriteAtConduit(sprite, conduitGO);
-        }
-
-        private Sprite GetSprite(string flow)
-        {
-            Texture2D texture;
-            if (flow == "none")
-            {
-                texture = _cross;
-            }
-            else
-            {
-                texture = new Texture2D(TextureSize, TextureSize);
-                Color32[] pixels = texture.GetPixels32();
-                for (int i = 0; i < pixels.Length; i++)
-                    pixels[i] = Color.clear;
-                texture.SetPixels32(pixels);
-                texture.Apply();
-            }
-
-            if (flow.Contains("right"))
-                texture = Merge(texture, _rightArrow);
-
-            if (flow.Contains("down"))
-                texture = Merge(texture, _downArrow);
-
-            if (flow.Contains("left"))
-                texture = Merge(texture, _leftArrow);
-
-            if (flow.Contains("up"))
-                texture = Merge(texture, _upArrow);
-
-            return CreateSprite(texture);
-        }
-
-        internal void RenderSpriteAtConduit(Sprite sprite, GameObject conduitGO, float angle = 0)
-        {
-            GameObject pipeFlow = Util.KInstantiateUI(_pipeFlowPrefab, GameScreenManager.Instance.worldSpaceCanvas, true);
-
-            Image image = pipeFlow.GetComponent<Image>();
-            image.sprite = sprite;
-
-            Vector2I xy = Grid.PosToXY(conduitGO.transform.position);
-
-            pipeFlow.transform.position = new Vector3(xy.X + 0.5f, xy.Y + 0.5f, Grid.GetLayerZ(Grid.SceneLayer.SceneMAX));
-            pipeFlow.transform.Rotate(0, 0, angle);
-            pipeFlow.transform.SetAsLastSibling();
-
-            _flowRenders.Add(pipeFlow);
         }
 
         internal void ClearLiquidConduitFlowDirections()
         {
-            _liquidConduitFlowDirections.Clear();
+            foreach (var entry in _liquidConduitFlowRenders.ToArray())
+            {
+                AddOrUpdateLiquidConduitFlowDirection(entry.Key, ConduitFlow.FlowDirections.None, true);
+            }
         }
 
         internal void ClearGasConduitFlowDirections()
         {
-            _gasConduitFlowDirections.Clear();
+            foreach (var entry in _gasConduitFlowRenders.ToArray())
+            {
+                AddOrUpdateGasConduitFlowDirection(entry.Key, ConduitFlow.FlowDirections.None, true);
+            }
         }
 
         internal void ClearSolidConduitFlowDirections()
         {
-            _solidConduitFlowDirections.Clear();
+            foreach (var entry in _solidConduitFlowRenders.ToArray())
+            {
+                AddOrUpdateSolidConduitFlowDirection(entry.Key, SolidConduitFlow.FlowDirection.None);
+            }
         }
 
-        internal void AddLiquidConduitFlowDirection(int idx, ConduitFlow.FlowDirections delta)
+        internal void AddOrUpdateLiquidConduitFlowDirection(GameObject conduitGO, ConduitFlow.FlowDirections delta, bool overwrite = false)
         {
-            _liquidConduitFlowDirections.AddOrUpdate(idx, delta, (_, current) => current | delta);
+            bool active = _overlayMode == OverlayModes.LiquidConduits.ID;
+            _liquidConduitFlowRenders.AddOrUpdate(conduitGO,
+                _ => AddFlowDirection(conduitGO, delta, active),
+                (_, entry) => UpdateFlowDirection(entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
         }
 
-        internal void AddGasConduitFlowDirection(int idx, ConduitFlow.FlowDirections delta)
+        internal void RemoveLiquidConduitFlow(GameObject conduitGO)
         {
-            _gasConduitFlowDirections.AddOrUpdate(idx, delta, (_, current) => current | delta);
+            if (_liquidConduitFlowRenders.TryRemove(conduitGO, out var entry))
+                Object.Destroy(entry.pipeFlow);
         }
 
-        internal void SetSolidConduitFlowDirection(int idx, SolidConduitFlow.FlowDirection directions)
+        internal void AddOrUpdateGasConduitFlowDirection(GameObject conduitGO, ConduitFlow.FlowDirections delta, bool overwrite = false)
         {
-            _solidConduitFlowDirections.AddOrUpdate(idx, directions, (_, __) => directions);
+            bool active = _overlayMode == OverlayModes.GasConduits.ID;
+            _gasConduitFlowRenders.AddOrUpdate(conduitGO,
+                _ => AddFlowDirection(conduitGO, delta, active),
+                (_, entry) => UpdateFlowDirection(entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
         }
 
-        private Sprite LoadSprite(string path, ref Texture2D texture, int rotate = 0)
+        internal void RemoveGasConduitFlow(GameObject conduitGO)
+        {
+            if (_gasConduitFlowRenders.TryRemove(conduitGO, out var entry))
+                Object.Destroy(entry.pipeFlow);
+        }
+
+        internal void AddOrUpdateSolidConduitFlowDirection(GameObject conduitGO, SolidConduitFlow.FlowDirection flow)
+        {
+            bool active = _overlayMode == OverlayModes.SolidConveyor.ID;
+            _solidConduitFlowRenders.AddOrUpdate(conduitGO,
+                _ => AddFlowDirection(conduitGO, flow, active),
+                (_, entry) => UpdateFlowDirection(entry.pipeFlow, flow, active));
+        }
+
+        internal void RemoveSolidConduitFlow(GameObject conduitGO)
+        {
+            if (_solidConduitFlowRenders.TryRemove(conduitGO, out var entry))
+                Object.Destroy(entry.pipeFlow);
+        }
+
+        private (GameObject pipeFlow, T flow) AddFlowDirection<T>(GameObject conduitGO, T flow, bool active)
+        {
+            GameObject pipeFlow = Util.KInstantiateUI(_pipeFlowPrefab, GameScreenManager.Instance.worldSpaceCanvas, true);
+
+            Vector2I xy = Grid.PosToXY(conduitGO.transform.position);
+
+            pipeFlow.transform.position = new Vector3(xy.X + 0.5f, xy.Y + 0.5f, Grid.GetLayerZ(Grid.SceneLayer.SceneMAX));
+            pipeFlow.transform.SetAsLastSibling();
+
+            return UpdateFlowDirection(pipeFlow, flow, active);
+        }
+
+        private (GameObject pipeFlow, T flow) UpdateFlowDirection<T>(GameObject pipeFlow, T flow, bool active)
+        {
+            if (_flowSprites.TryGetValue(flow.ToString().ToLower(), out Sprite sprite))
+            {
+                Image image = pipeFlow.GetComponent<Image>();
+                image.sprite = sprite;
+            }
+
+            pipeFlow.SetActive(active);
+
+            return (pipeFlow, flow);
+        }
+
+        private Texture2D LoadTexture(string path, int rotate = 0)
         {
             string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), path);
 
-            Debug.Log($"Loading texture from {fullPath}");
-
-            texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
+            Texture2D texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
             {
                 filterMode = FilterMode.Trilinear
             };
@@ -233,7 +254,7 @@ namespace Pipe_Flow_Overlay
             for (int i = 0; i < rotate; i++)
                 texture = Rotate(texture);
 
-            return CreateSprite(texture);
+            return texture;
         }
 
         private static Sprite CreateSprite(Texture2D texture)
