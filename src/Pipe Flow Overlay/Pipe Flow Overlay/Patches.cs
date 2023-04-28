@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System.Net;
 
 namespace Pipe_Flow_Overlay
 {
@@ -112,7 +113,7 @@ namespace Pipe_Flow_Overlay
         [HarmonyPatch("AddPermittedFlowDirections")]
         public class ConduitFlow_SOAInfo_AddPermittedFlowDirections_Patch
         {
-            public static void Prefix(ConduitFlow.SOAInfo __instance, int idx, ConduitFlow.FlowDirections delta)
+            public static void Postfix(ConduitFlow.SOAInfo __instance, int idx, ConduitFlow.FlowDirections delta)
             {
                 ConduitFlow manager = PipeFlowOverlayMod.Instance.GetConduitFlow(__instance);
                 if (manager == null)
@@ -137,10 +138,20 @@ namespace Pipe_Flow_Overlay
         [HarmonyPatch("SetTargetFlowDirection")]
         public class SolidConduitFlow_SOAInfo_SetTargetFlowDirection_Patch
         {
-            public static void Prefix(SolidConduitFlow.SOAInfo __instance, int idx, SolidConduitFlow.FlowDirection directions)
+            public static void Postfix(SolidConduitFlow.SOAInfo __instance, int idx, SolidConduitFlow.FlowDirection directions)
             {
                 PipeFlowOverlayMod.Instance.AddOrUpdateSolidConduitFlowDirection(__instance.GetConduitGO(idx), directions);
             }
         }
+
+        //[HarmonyPatch(typeof(UtilityNetworkManager<FlowUtilityNetwork, Vent>))]
+        //[HarmonyPatch("AddToNetworks")]
+        //public class UtilityNetworkManager_FlowUtilityNetwork_Vent_AddToNetworks_Patch
+        //{
+        //    public static void PostFix(int cell, object item, bool is_endpoint)
+        //    {
+        //        Debug.Log($"AddToNetworks - {cell} - {item.GetType()} - {is_endpoint}");
+        //    }
+        //}
     }
 }
