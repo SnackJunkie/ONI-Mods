@@ -51,8 +51,8 @@ namespace Pipe_Flow_Overlay
 
         private void LoadFlowSprites()
         {
-            const string flowSprite = @"Resources\Flow.png";
-            const string noFlowSprite = @"Resources\NoFlow.png";
+            const string flowSprite = @"Flow.png";
+            const string noFlowSprite = @"NoFlow.png";
 
             Texture2D rightArrow = LoadTexture(flowSprite);
             Texture2D downArrow = LoadTexture(flowSprite, 1);
@@ -262,9 +262,9 @@ namespace Pipe_Flow_Overlay
             return (pipeFlow, flow);
         }
 
-        private Texture2D LoadTexture(string path, int rotate = 0)
+        private Texture2D LoadTexture(string fileName, int rotate = 0)
         {
-            string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), path);
+            string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", fileName);
 
             Texture2D texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
             {
