@@ -1,5 +1,5 @@
 using HarmonyLib;
-using System.Net;
+using UnityEngine;
 
 namespace Pipe_Flow_Overlay
 {
@@ -17,7 +17,7 @@ namespace Pipe_Flow_Overlay
 
         [HarmonyPatch(typeof(SimDebugView))]
         [HarmonyPatch("SetMode")]
-        public class OverlayMenu_ActivateOverlay_Patch
+        public class SimDebugView_SetMode_Patch
         {
             public static void Postfix(HashedString mode)
             {
@@ -121,7 +121,7 @@ namespace Pipe_Flow_Overlay
                     return;
                 }
 
-                UnityEngine.GameObject conduitGO = __instance.GetConduitGO(idx);
+                GameObject conduitGO = __instance.GetConduitGO(idx);
 
                 if (manager.conduitType == ConduitType.Liquid)
                 {
@@ -144,14 +144,26 @@ namespace Pipe_Flow_Overlay
             }
         }
 
-        //[HarmonyPatch(typeof(UtilityNetworkManager<FlowUtilityNetwork, Vent>))]
-        //[HarmonyPatch("AddToNetworks")]
-        //public class UtilityNetworkManager_FlowUtilityNetwork_Vent_AddToNetworks_Patch
-        //{
-        //    public static void PostFix(int cell, object item, bool is_endpoint)
-        //    {
-        //        Debug.Log($"AddToNetworks - {cell} - {item.GetType()} - {is_endpoint}");
-        //    }
-        //}
+        [HarmonyPatch(typeof(OverlayLegend))]
+        [HarmonyPatch("SetLegend")]
+        [HarmonyPatch(new System.Type[] { typeof(OverlayLegend.OverlayInfo) })]
+        public class OverlayLegend_SetLegend_Patch
+        {
+            public static void Prefix(OverlayLegend.OverlayInfo overlayInfo)
+            {
+                
+                PipeFlowOverlayMod.Instance.CreateCheckBox(overlayInfo);
+            }
+        }
+
+        [HarmonyPatch(typeof(KToggle))]
+        [HarmonyPatch("OnValueChanged")]
+        public class KToggle_OnValueChanged_Patch
+        {
+            public static void Postfix(KToggle __instance, bool value)
+            {
+                PipeFlowOverlayMod.Instance.ToggleValueChanged(__instance, value);
+            }
+        }
     }
 }

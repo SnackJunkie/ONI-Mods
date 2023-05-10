@@ -63,6 +63,16 @@ namespace Pipe_Flow_Overlay.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap Border {
+            get {
+                object obj = ResourceManager.GetObject("Border", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap Flow {
             get {
                 object obj = ResourceManager.GetObject("Flow", resourceCulture);
@@ -76,6 +86,16 @@ namespace Pipe_Flow_Overlay.Properties {
         internal static System.Drawing.Bitmap NoFlow {
             get {
                 object obj = ResourceManager.GetObject("NoFlow", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ToggledIcon {
+            get {
+                object obj = ResourceManager.GetObject("ToggledIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

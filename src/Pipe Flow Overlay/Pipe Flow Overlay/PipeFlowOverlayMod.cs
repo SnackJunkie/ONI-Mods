@@ -3,6 +3,7 @@ using KMod;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,8 +14,12 @@ namespace Pipe_Flow_Overlay
     {
         private const int TextureSize = 1024;
         private const float TextureScale = 0.02f;
+        private const string CheckBoxContainerName = "PipeFlowOverlayCheckBoxContainer";
+        private const string CheckBoxName = "PipeFlowOverlayCheckBox";
+        private const string ToggledIconName = "PipeFlowOverlayCheckBoxToggledIcon";
 
         internal static PipeFlowOverlayMod Instance;
+        private bool ShowOverlay { get; set; }
 
         private GameObject _pipeFlowPrefab;
         private ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow> _conduitFlowManagers;
@@ -24,11 +29,14 @@ namespace Pipe_Flow_Overlay
         private Dictionary<string, Sprite> _flowSprites;
         private HashedString _overlayMode;
         private Sprite _clear;
+        private Sprite _border;
+        private Sprite _toggledIcon;
 
         public override void OnLoad(Harmony harmony)
         {
             base.OnLoad(harmony);
 
+            ShowOverlay = true;
             Instance = this;
         }
 
@@ -38,7 +46,7 @@ namespace Pipe_Flow_Overlay
             _liquidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
             _gasConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
             _solidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, SolidConduitFlow.FlowDirection flow)>();
-            LoadFlowSprites();
+            LoadSprites();
             _pipeFlowPrefab = new GameObject("PipeFlow");
             _pipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
             _pipeFlowPrefab.SetActive(false);
@@ -49,7 +57,7 @@ namespace Pipe_Flow_Overlay
             image.color = Color.white;
         }
 
-        private void LoadFlowSprites()
+        private void LoadSprites()
         {
             const string flowSprite = @"Flow.png";
             const string noFlowSprite = @"NoFlow.png";
@@ -66,6 +74,8 @@ namespace Pipe_Flow_Overlay
             clear.SetPixels32(pixels);
             clear.Apply();
             _clear = CreateSprite(clear);
+            _border = CreateSprite(LoadTexture("Border.png", 0, 64, 60));
+            _toggledIcon = CreateSprite(LoadTexture("ToggledIcon.png", 0, 54, 40));
 
             _flowSprites = new Dictionary<string, Sprite>();
 
@@ -78,7 +88,6 @@ namespace Pipe_Flow_Overlay
                     _flowSprites.Add(flow, GetSprite(flow));
                 }
             }
-
 
             Sprite GetSprite(string flow)
             {
@@ -116,6 +125,151 @@ namespace Pipe_Flow_Overlay
             }
         }
 
+        internal void CreateCheckBox(OverlayLegend.OverlayInfo overlayInfo)
+        {
+            if (overlayInfo != null)
+            {
+                if (overlayInfo.mode == OverlayModes.LiquidConduits.ID
+                    || overlayInfo.mode == OverlayModes.GasConduits.ID
+                    || overlayInfo.mode == OverlayModes.SolidConveyor.ID)
+                {
+                    GameObject checkBoxContainer = overlayInfo.diagrams.FirstOrDefault(go => go.name == CheckBoxContainerName);
+                    if (checkBoxContainer == null)
+                    {
+                        checkBoxContainer = new GameObject(CheckBoxContainerName);
+                        RectTransform rectTransform = checkBoxContainer.AddComponent<RectTransform>();
+                        rectTransform.anchorMin = new Vector2(0, 0);
+                        rectTransform.anchorMax = new Vector2(0, 0);
+                        rectTransform.offsetMin = new Vector2(0, 0);
+                        rectTransform.offsetMax = new Vector2(0, 0);
+                        rectTransform.pivot = new Vector2(0, 0.5f);
+                        rectTransform.sizeDelta = new Vector2(0, 0);
+                        CanvasRenderer canvasRenderer = checkBoxContainer.AddComponent<CanvasRenderer>();
+                        canvasRenderer.cullTransparentMesh = false;
+                        HorizontalLayoutGroup horizontalLayoutGroup = checkBoxContainer.AddComponent<HorizontalLayoutGroup>();
+                        horizontalLayoutGroup.childForceExpandHeight = false;
+                        horizontalLayoutGroup.childForceExpandWidth = false;
+                        horizontalLayoutGroup.spacing = 9;
+                        Image checkBoxContainerImage = checkBoxContainer.AddComponent<Image>();
+                        checkBoxContainerImage.color = Color.white;
+
+                        GameObject checkBox = new GameObject(CheckBoxName);
+                        checkBox.transform.SetParent(checkBoxContainer.transform);
+                        rectTransform = checkBox.AddComponent<RectTransform>();
+                        rectTransform.anchorMin = new Vector2(0, 0);
+                        rectTransform.anchorMax = new Vector2(0, 0);
+                        rectTransform.offsetMin = new Vector2(0, 0);
+                        rectTransform.offsetMax = new Vector2(0, 0);
+                        rectTransform.pivot = new Vector2(0, 0.5f);
+                        rectTransform.sizeDelta = new Vector2(0, 0);
+                        canvasRenderer = checkBox.AddComponent<CanvasRenderer>();
+                        canvasRenderer.cullTransparentMesh = false;
+                        KToggle kToggle = checkBox.AddComponent<KToggle>();
+                        kToggle.artExtension = new KToggleArtExtensions();
+                        kToggle.animationTriggers.selectedTrigger = "Highlighted";
+                        LayoutElement layoutElement = checkBox.AddComponent<LayoutElement>();
+                        layoutElement.minHeight = 20;
+                        layoutElement.minWidth = 20;
+                        checkBox.AddComponent<HierarchyReferences>();
+
+                        GameObject border = new GameObject("PipeFlowOverlayCheckBoxBorder");
+                        border.transform.SetParent(checkBox.transform);
+                        rectTransform = border.AddComponent<RectTransform>();
+                        rectTransform.anchorMin = new Vector2(0, 0);
+                        rectTransform.anchorMax = new Vector2(1, 1);
+                        rectTransform.offsetMin = new Vector2(0, 0);
+                        rectTransform.offsetMax = new Vector2(0, 0);
+                        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                        rectTransform.sizeDelta = new Vector2(0, 0);
+                        canvasRenderer = border.AddComponent<CanvasRenderer>();
+                        canvasRenderer.cullTransparentMesh = false;
+                        Image borderImage = border.AddComponent<Image>();
+                        borderImage.sprite = _border;
+
+                        GameObject toggledIcon = new GameObject(ToggledIconName);
+                        toggledIcon.transform.SetParent(checkBox.transform);
+                        rectTransform = toggledIcon.AddComponent<RectTransform>();
+                        rectTransform.anchorMin = new Vector2(0, 0);
+                        rectTransform.anchorMax = new Vector2(1, 1);
+                        rectTransform.offsetMin = new Vector2(0, 0);
+                        rectTransform.offsetMax = new Vector2(0, 0);
+                        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                        rectTransform.sizeDelta = new Vector2(0, 0);
+                        canvasRenderer = toggledIcon.AddComponent<CanvasRenderer>();
+                        canvasRenderer.cullTransparentMesh = false;
+                        Image toggledIconImage = toggledIcon.AddComponent<Image>();
+                        toggledIconImage.sprite = _toggledIcon;
+
+                        GameObject checkBoxText = new GameObject("PipeFlowOverlayCheckBoxText");
+                        checkBoxText.transform.SetParent(checkBoxContainer.transform);
+                        rectTransform = checkBoxText.AddComponent<RectTransform>();
+                        rectTransform.anchorMin = new Vector2(0, 0);
+                        rectTransform.anchorMax = new Vector2(0, 0);
+                        rectTransform.offsetMin = new Vector2(0, 0);
+                        rectTransform.offsetMax = new Vector2(0, 0);
+                        rectTransform.pivot = new Vector2(0, 0.5f);
+                        rectTransform.sizeDelta = new Vector2(0, 0);
+                        MyLocText locText = checkBoxText.AddComponent<MyLocText>();
+                        locText.text = "Show Flow Overlay";
+                        locText.color = Color.black;
+                        locText.fontSize = 18;
+
+                        overlayInfo.diagrams.Add(checkBoxContainer);
+                    }
+
+                    KToggle toggle = checkBoxContainer.transform.Find(CheckBoxName)?.GetComponent<KToggle>();
+                    if (toggle != null)
+                        toggle.isOn = ShowOverlay;
+                    checkBoxContainer.transform.Find($"{CheckBoxName}/{ToggledIconName}")?.gameObject.SetActive(ShowOverlay);
+                }
+            }
+        }
+
+        internal void ToggleValueChanged(KToggle kToggle, bool value)
+        {
+            if (kToggle.gameObject.name == CheckBoxName)
+            {
+                ShowOverlay = value;
+                kToggle.gameObject.transform.Find(ToggledIconName)?.gameObject.SetActive(ShowOverlay);
+                ToggleOverlay(_overlayMode);
+            }
+        }
+
+        private static void LogTransformTree(GameObject go, int depth)
+        {
+            string prefix = "";
+            for (int i = 0; i < depth; i++)
+                prefix += "\t";
+
+            Debug.Log($"{prefix}{go.name} - {go.transform.localScale} - {go.transform.localPosition}");
+            foreach (Component component in go.GetComponents<Component>())
+            {
+                string log = $"{prefix} • {component.GetType()}";
+                if (component is VerticalLayoutGroup verticalLayoutGroup)
+                    log += $" - childControlHeight: {verticalLayoutGroup.childControlHeight} - childControlWidth: {verticalLayoutGroup.childControlWidth} - childForceExpandHeight: {verticalLayoutGroup.childForceExpandHeight} - childForceExpandWidth: {verticalLayoutGroup.childForceExpandWidth} - minWidth: {verticalLayoutGroup.minWidth} - preferredWidth: {verticalLayoutGroup.preferredWidth} - childScaleHeight: {verticalLayoutGroup.childScaleHeight} - childScaleWidth: {verticalLayoutGroup.childScaleWidth} - flexibleHeight: {verticalLayoutGroup.flexibleHeight} - flexibleWidth: {verticalLayoutGroup.flexibleWidth} - layoutPriority: {verticalLayoutGroup.layoutPriority} - minHeight: {verticalLayoutGroup.minHeight} - spacing: {verticalLayoutGroup.spacing}";
+                if (component is LayoutElement layoutElement)
+                    log += $" - flexibleHeight: {layoutElement.flexibleHeight} - flexibleWidth: {layoutElement.flexibleWidth} - hideFlags: {layoutElement.hideFlags} - ignoreLayout: {layoutElement.ignoreLayout} - layoutPriority: {layoutElement.layoutPriority} - minHeight: {layoutElement.minHeight} - minWidth: {layoutElement.minWidth} - preferredHeight: {layoutElement.preferredHeight} - preferredWidth: {layoutElement.preferredWidth}";
+                if (component is HorizontalLayoutGroup horizontalLayoutGroup)
+                    log += $" - childControlHeight: {horizontalLayoutGroup.childControlHeight} - childControlWidth: {horizontalLayoutGroup.childControlWidth} - childForceExpandHeight: {horizontalLayoutGroup.childForceExpandHeight} - childForceExpandWidth: {horizontalLayoutGroup.childForceExpandWidth} - childScaleHeight: {horizontalLayoutGroup.childScaleHeight} - childScaleWidth: {horizontalLayoutGroup.childScaleWidth} - flexibleHeight: {horizontalLayoutGroup.flexibleHeight} - flexibleWidth: {horizontalLayoutGroup.flexibleWidth} - layoutPriority: {horizontalLayoutGroup.layoutPriority} - minHeight: {horizontalLayoutGroup.minHeight} - minWidth: {horizontalLayoutGroup.minWidth} - padding: {horizontalLayoutGroup.padding} - preferredHeight: {horizontalLayoutGroup.preferredHeight} - preferredWidth: {horizontalLayoutGroup.preferredWidth} - reverseArrangement: {horizontalLayoutGroup.reverseArrangement} - spacing: {horizontalLayoutGroup.spacing} - transform: {horizontalLayoutGroup.transform} - useGUILayout: {horizontalLayoutGroup.useGUILayout}";
+                if (component is RectTransform rectTransform)
+                    log += $" - anchoredPosition: {rectTransform.anchoredPosition} - anchoredPosition3D: {rectTransform.anchoredPosition3D} - anchorMax: {rectTransform.anchorMax} - anchorMin: {rectTransform.anchorMin} - eulerAngles: {rectTransform.eulerAngles} - forward: {rectTransform.forward} - hierarchyCapacity: {rectTransform.hierarchyCapacity} - hierarchyCount: {rectTransform.hierarchyCount} - localEulerAngles: {rectTransform.localEulerAngles} - localPosition: {rectTransform.localPosition} - localRotation: {rectTransform.localRotation} - localScale: {rectTransform.localScale} - lossyScale: {rectTransform.lossyScale} - offsetMax: {rectTransform.offsetMax} - offsetMin: {rectTransform.offsetMin} - pivot: {rectTransform.pivot} - position: {rectTransform.position} - rect: {rectTransform.rect} - right: {rectTransform.right} - rotation: {rectTransform.rotation} - sizeDelta: {rectTransform.sizeDelta} - up: {rectTransform.up}";
+                if (component is CanvasRenderer canvasRenderer)
+                    log += $" - absoluteDepth: {canvasRenderer.absoluteDepth} - clippingSoftness: {canvasRenderer.clippingSoftness} - cull: {canvasRenderer.cull} - cullTransparentMesh: {canvasRenderer.cullTransparentMesh} - hasPopInstruction: {canvasRenderer.hasPopInstruction} - hasRectClipping: {canvasRenderer.hasRectClipping} - materialCount: {canvasRenderer.materialCount} - popMaterialCount: {canvasRenderer.popMaterialCount} - relativeDepth: {canvasRenderer.relativeDepth}";
+                if (component is KToggle kToggle)
+                    log += $" - disabledTrigger: {kToggle.animationTriggers?.disabledTrigger} - highlightedTrigger: {kToggle.animationTriggers?.highlightedTrigger} - normalTrigger: {kToggle.animationTriggers?.normalTrigger} - pressedTrigger: {kToggle.animationTriggers?.pressedTrigger} - selectedTrigger: {kToggle.animationTriggers?.selectedTrigger} - colorMultiplier: {kToggle.colors.colorMultiplier} - disabledColor: {kToggle.colors.disabledColor} - fadeDuration: {kToggle.colors.fadeDuration} - highlightedColor: {kToggle.colors.highlightedColor} - normalColor: {kToggle.colors.normalColor} - pressedColor: {kToggle.colors.pressedColor} - selectedColor: {kToggle.colors.selectedColor} - enabled: {kToggle.enabled} - GetMouseOver: {kToggle.GetMouseOver} - group: {kToggle.group} - image: {kToggle.image} - interactable: {kToggle.interactable} - isOn: {kToggle.isOn} - mode: {kToggle.navigation.mode} - selectOnDown: {kToggle.navigation.selectOnDown} - selectOnLeft: {kToggle.navigation.selectOnLeft} - selectOnRight: {kToggle.navigation.selectOnRight} - selectOnUp: {kToggle.navigation.selectOnUp} - wrapAround: {kToggle.navigation.wrapAround} - disabledSprite: {kToggle.spriteState.disabledSprite} - highlightedSprite: {kToggle.spriteState.highlightedSprite} - pressedSprite: {kToggle.spriteState.pressedSprite} - selectedSprite: {kToggle.spriteState.selectedSprite} - targetGraphic: {kToggle.targetGraphic} - transition: {kToggle.transition} - useGUILayout: {kToggle.useGUILayout} - artExtension: {kToggle.artExtension != null}";
+                if (component is Image image)
+                    log += $" - rect: {image.sprite?.rect} - width: {image.sprite?.texture?.width} - height: {image.sprite?.texture?.height} - {image.material} - {image.color}";
+                if (component is ImageToggleState imageToggleState)
+                    log += $" - enabled: {imageToggleState.enabled} - hideFlags: {imageToggleState.hideFlags} - isActiveAndEnabled: {imageToggleState.isActiveAndEnabled} - IsDisabled: {imageToggleState.IsDisabled} - isNull: {imageToggleState.isNull} - isSpawned: {imageToggleState.isSpawned} - tag: {imageToggleState.tag} - useGUILayout: {imageToggleState.useGUILayout}";
+                if (component is LocText locText)
+                    log += $" - {locText.text} - {locText.fontSize}";
+                Debug.Log(log);
+            }
+
+            for (int i = 0; i < go.transform.childCount; i++)
+                LogTransformTree(go.transform.GetChild(i).gameObject, depth + 1);
+        }
+
         internal void RegisterConduitFlowManager(ConduitFlow.SOAInfo soaInfo, ConduitFlow manager)
         {
             _conduitFlowManagers.TryAdd(soaInfo, manager);
@@ -141,6 +295,9 @@ namespace Pipe_Flow_Overlay
 
         private void Toggle<T>(ref ConcurrentDictionary<GameObject, (GameObject pipeFlow, T flow)> dict, bool active)
         {
+            if (!ShowOverlay)
+                active = false;
+
             foreach (KeyValuePair<GameObject, (GameObject pipeFlow, T flow)> entry in dict.ToArray())
             {
                 dict.AddOrUpdate(entry.Key, entry.Value /*Should never be hit*/, (_, current) =>
@@ -262,11 +419,11 @@ namespace Pipe_Flow_Overlay
             return (pipeFlow, flow);
         }
 
-        private Texture2D LoadTexture(string fileName, int rotate = 0)
+        private Texture2D LoadTexture(string fileName, int rotate = 0, int width = TextureSize, int height = TextureSize)
         {
             string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", fileName);
 
-            Texture2D texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGB24, false)
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGB24, false)
             {
                 filterMode = FilterMode.Trilinear
             };
@@ -339,6 +496,15 @@ namespace Pipe_Flow_Overlay
             mergeTexture.SetPixels32(merge);
             mergeTexture.Apply();
             return mergeTexture;
+        }
+    }
+
+    class MyLocText : LocText
+    {
+        protected override void Awake()
+        {
+            key = "";
+            base.Awake();
         }
     }
 }
