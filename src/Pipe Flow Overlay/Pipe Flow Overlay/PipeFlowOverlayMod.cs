@@ -388,6 +388,9 @@ namespace Pipe_Flow_Overlay
 
         private (GameObject pipeFlow, T flow) UpdateFlowDirection<T>(GameObject conduitGO, GameObject pipeFlow, T flow, bool active)
         {
+            if (!ShowOverlay)
+                active = false;
+
             bool is_endpoint = false;
             if (flow.ToString().ToLower() == "none" && conduitGO != null)
             {
