@@ -210,7 +210,7 @@ namespace Pipe_Flow_Overlay
                         rectTransform.pivot = new Vector2(0, 0.5f);
                         rectTransform.sizeDelta = new Vector2(0, 0);
                         MyLocText locText = checkBoxText.AddComponent<MyLocText>();
-                        locText.text = "Show Flow Overlay";
+                        locText.text = (string)STRINGS.UI.OVERLAY.FLOW.TOGGLE_TEXT;
                         locText.color = Color.black;
                         locText.fontSize = 18;
 

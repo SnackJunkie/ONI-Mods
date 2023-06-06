@@ -1,4 +1,7 @@
 using HarmonyLib;
+using System;
+using System.IO;
+using System.Reflection;
 using UnityEngine;
 
 namespace Pipe_Flow_Overlay
@@ -163,6 +166,49 @@ namespace Pipe_Flow_Overlay
             public static void Postfix(KToggle __instance, bool value)
             {
                 PipeFlowOverlayMod.Instance.ToggleValueChanged(__instance, value);
+            }
+        }
+
+        [HarmonyPatch(typeof(Localization))]
+        [HarmonyPatch("Initialize")]
+        public class Localization_Initialize_Patch
+        {
+            public static void Postfix()
+            {
+                Translate(typeof(STRINGS));
+            }
+
+            public static void Translate(Type root)
+            {
+                Localization.RegisterForTranslation(root);
+
+                LoadStrings();
+
+                LocString.CreateLocStringKeys(root, null);
+
+                Localization.GenerateStringsTemplate(root, GetTranslationDir());
+            }
+
+            private static string GetTranslationDir()
+            {
+                string dir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Translations");
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                return dir;
+            }
+
+            private static void LoadStrings()
+            {
+                string code = Localization.GetLocale()?.Code;
+                if (string.IsNullOrEmpty(code))
+                    code = Localization.GetCurrentLanguageCode();
+
+                string path = Path.Combine(GetTranslationDir(), code + ".po");
+
+                if (File.Exists(path))
+                    Localization.OverloadStrings(Localization.LoadStringsFile(path, false));
+                else
+                    Debug.Log($"{code}.po not found, using default strings.");
             }
         }
     }
