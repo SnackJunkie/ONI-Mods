@@ -18,6 +18,16 @@ namespace Pipe_Flow_Overlay
             }
         }
 
+        [HarmonyPatch(typeof(Game))]
+        [HarmonyPatch("OnDestroy")]
+        public class Game_OnDestroy_Patch
+        {
+            public static void Prefix()
+            {
+                PipeFlowOverlayMod.Instance.SaveSettings();
+            }
+        }
+
         [HarmonyPatch(typeof(SimDebugView))]
         [HarmonyPatch("SetMode")]
         public class SimDebugView_SetMode_Patch

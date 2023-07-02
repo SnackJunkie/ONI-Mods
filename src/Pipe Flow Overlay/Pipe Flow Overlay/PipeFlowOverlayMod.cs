@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,6 +20,7 @@ namespace Pipe_Flow_Overlay
         private const string ToggledIconName = "PipeFlowOverlayCheckBoxToggledIcon";
 
         internal static PipeFlowOverlayMod Instance;
+        private static string SettingsFile => Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "settings.txt");
         private bool ShowOverlay { get; set; }
 
         private GameObject _pipeFlowPrefab;
@@ -36,12 +38,13 @@ namespace Pipe_Flow_Overlay
         {
             base.OnLoad(harmony);
 
-            ShowOverlay = true;
             Instance = this;
         }
 
         internal void Initialize()
         {
+            LoadSettings();
+
             _conduitFlowManagers = new ConcurrentDictionary<ConduitFlow.SOAInfo, ConduitFlow>();
             _liquidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
             _gasConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
@@ -55,6 +58,43 @@ namespace Pipe_Flow_Overlay
             image.type = Image.Type.Simple;
             image.raycastTarget = false;
             image.color = Color.white;
+        }
+
+        internal void SaveSettings()
+        {
+            StringBuilder sbSettings = new StringBuilder();
+
+            sbSettings.AppendLine($"{nameof(ShowOverlay)}={ShowOverlay}");
+
+            File.WriteAllText(SettingsFile, sbSettings.ToString());
+        }
+
+        private void LoadSettings()
+        {
+            ShowOverlay = true;
+
+            if (!File.Exists(SettingsFile))
+            {
+                return;
+            }
+
+            string settings = File.ReadAllText(SettingsFile);
+
+            foreach (string line in settings.Split('\n'))
+            {
+                string[] setting = line.Split('=');
+
+                if (setting.Length != 2)
+                {
+                    continue;
+                }
+
+                if (setting[0].Trim().Equals(nameof(ShowOverlay), System.StringComparison.OrdinalIgnoreCase)
+                    && bool.TryParse(setting[1].Trim(), out bool showOverlay))
+                {
+                    ShowOverlay = showOverlay;
+                }
+            }
         }
 
         private void LoadSprites()
