@@ -340,9 +340,10 @@ namespace Pipe_Flow_Overlay
 
             foreach (KeyValuePair<GameObject, (GameObject pipeFlow, T flow)> entry in dict.ToArray())
             {
-                dict.AddOrUpdate(entry.Key, entry.Value /*Should never be hit*/, (_, current) =>
+                dict.AddOrUpdate(entry.Key, entry.Value /*Should never be hit*/, (conduitGO, current) =>
                 {
-                    current.pipeFlow.SetActive(active);
+                    int cell = Grid.PosToCell(conduitGO);
+                    current.pipeFlow.SetActive(active && Grid.IsActiveWorld(cell));
                     return current;
                 });
             }
