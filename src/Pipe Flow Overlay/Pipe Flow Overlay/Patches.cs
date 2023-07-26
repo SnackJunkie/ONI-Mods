@@ -28,6 +28,16 @@ namespace Pipe_Flow_Overlay
             }
         }
 
+        [HarmonyPatch(typeof(Game))]
+        [HarmonyPatch("Update")]
+        public class Game_Update_Patch
+        {
+            public static void Postfix()
+            {
+                PipeFlowOverlayMod.Instance.Update();
+            }
+        }
+
         [HarmonyPatch(typeof(SimDebugView))]
         [HarmonyPatch("SetMode")]
         public class SimDebugView_SetMode_Patch

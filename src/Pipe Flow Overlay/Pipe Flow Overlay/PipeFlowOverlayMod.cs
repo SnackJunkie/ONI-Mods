@@ -28,6 +28,7 @@ namespace Pipe_Flow_Overlay
         private ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)> _liquidConduitFlowRenders;
         private ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)> _gasConduitFlowRenders;
         private ConcurrentDictionary<GameObject, (GameObject pipeFlow, SolidConduitFlow.FlowDirection flow)> _solidConduitFlowRenders;
+        private ConcurrentQueue<System.Action> _actionQueue;
         private Dictionary<string, Sprite> _flowSprites;
         private HashedString _overlayMode;
         private Sprite _clear;
@@ -49,6 +50,7 @@ namespace Pipe_Flow_Overlay
             _liquidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
             _gasConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, ConduitFlow.FlowDirections flow)>();
             _solidConduitFlowRenders = new ConcurrentDictionary<GameObject, (GameObject pipeFlow, SolidConduitFlow.FlowDirection flow)>();
+            _actionQueue = new ConcurrentQueue<System.Action>();
             LoadSprites();
             _pipeFlowPrefab = new GameObject("PipeFlow");
             _pipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
@@ -429,36 +431,39 @@ namespace Pipe_Flow_Overlay
 
         private (GameObject pipeFlow, T flow) UpdateFlowDirection<T>(GameObject conduitGO, GameObject pipeFlow, T flow, bool active)
         {
-            if (!ShowOverlay)
-                active = false;
-
-            bool is_endpoint = false;
-            if (flow.ToString().ToLower() == "none" && conduitGO != null)
+            _actionQueue.Enqueue(() =>
             {
-                Conduit conduit = conduitGO.GetComponent<Conduit>();
-                if (conduit != null)
+                if (!ShowOverlay)
+                    active = false;
+
+                bool is_endpoint = false;
+                if (flow.ToString().ToLower() == "none" && conduitGO != null)
                 {
-                    IUtilityNetworkMgr utilityNetworkMgr = conduit.GetNetworkManager();
-                    if (utilityNetworkMgr != null)
+                    Conduit conduit = conduitGO.GetComponent<Conduit>();
+                    if (conduit != null)
                     {
-                        object endpoint = utilityNetworkMgr.GetEndpoint(conduit.Cell);
-                        if (endpoint != null)
+                        IUtilityNetworkMgr utilityNetworkMgr = conduit.GetNetworkManager();
+                        if (utilityNetworkMgr != null)
                         {
-                            is_endpoint = true;
+                            object endpoint = utilityNetworkMgr.GetEndpoint(conduit.Cell);
+                            if (endpoint != null)
+                            {
+                                is_endpoint = true;
+                            }
                         }
                     }
                 }
-            }
 
-            if (!_flowSprites.TryGetValue(flow.ToString().ToLower(), out Sprite sprite) || is_endpoint)
-            {
-                sprite = _clear;
-            }
+                if (!_flowSprites.TryGetValue(flow.ToString().ToLower(), out Sprite sprite) || is_endpoint)
+                {
+                    sprite = _clear;
+                }
 
-            Image image = pipeFlow.GetComponent<Image>();
-            image.sprite = sprite;
+                Image image = pipeFlow.GetComponent<Image>();
+                image.sprite = sprite;
 
-            pipeFlow.SetActive(active);
+                pipeFlow.SetActive(active);
+            });
 
             return (pipeFlow, flow);
         }
@@ -540,6 +545,12 @@ namespace Pipe_Flow_Overlay
             mergeTexture.SetPixels32(merge);
             mergeTexture.Apply();
             return mergeTexture;
+        }
+
+        internal void Update()
+        {
+            while (_actionQueue.TryDequeue(out System.Action action))
+                action();
         }
     }
 
