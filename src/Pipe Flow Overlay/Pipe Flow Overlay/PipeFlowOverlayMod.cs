@@ -377,10 +377,13 @@ namespace Pipe_Flow_Overlay
 
         internal void AddOrUpdateLiquidConduitFlowDirection(GameObject conduitGO, ConduitFlow.FlowDirections delta, bool overwrite = false)
         {
-            bool active = _overlayMode == OverlayModes.LiquidConduits.ID;
-            _liquidConduitFlowRenders.AddOrUpdate(conduitGO,
-                _ => AddFlowDirection(conduitGO, delta, active),
-                (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
+            _actionQueue.Enqueue(() =>
+            {
+                bool active = _overlayMode == OverlayModes.LiquidConduits.ID;
+                _liquidConduitFlowRenders.AddOrUpdate(conduitGO,
+                    _ => AddFlowDirection(conduitGO, delta, active),
+                    (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
+            });
         }
 
         internal void RemoveLiquidConduitFlow(GameObject conduitGO)
@@ -391,10 +394,13 @@ namespace Pipe_Flow_Overlay
 
         internal void AddOrUpdateGasConduitFlowDirection(GameObject conduitGO, ConduitFlow.FlowDirections delta, bool overwrite = false)
         {
-            bool active = _overlayMode == OverlayModes.GasConduits.ID;
-            _gasConduitFlowRenders.AddOrUpdate(conduitGO,
-                _ => AddFlowDirection(conduitGO, delta, active),
-                (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
+            _actionQueue.Enqueue(() =>
+            {
+                bool active = _overlayMode == OverlayModes.GasConduits.ID;
+                _gasConduitFlowRenders.AddOrUpdate(conduitGO,
+                    _ => AddFlowDirection(conduitGO, delta, active),
+                    (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, overwrite ? delta : entry.flow | delta, active));
+            });
         }
 
         internal void RemoveGasConduitFlow(GameObject conduitGO)
@@ -405,10 +411,13 @@ namespace Pipe_Flow_Overlay
 
         internal void AddOrUpdateSolidConduitFlowDirection(GameObject conduitGO, SolidConduitFlow.FlowDirection flow)
         {
-            bool active = _overlayMode == OverlayModes.SolidConveyor.ID;
-            _solidConduitFlowRenders.AddOrUpdate(conduitGO,
-                _ => AddFlowDirection(conduitGO, flow, active),
-                (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, flow, active));
+            _actionQueue.Enqueue(() =>
+            {
+                bool active = _overlayMode == OverlayModes.SolidConveyor.ID;
+                _solidConduitFlowRenders.AddOrUpdate(conduitGO,
+                    _ => AddFlowDirection(conduitGO, flow, active),
+                    (_, entry) => UpdateFlowDirection(conduitGO, entry.pipeFlow, flow, active));
+            });
         }
 
         internal void RemoveSolidConduitFlow(GameObject conduitGO)
@@ -419,7 +428,7 @@ namespace Pipe_Flow_Overlay
 
         private (GameObject pipeFlow, T flow) AddFlowDirection<T>(GameObject conduitGO, T flow, bool active)
         {
-            GameObject pipeFlow = Util.KInstantiateUI(_pipeFlowPrefab, GameScreenManager.Instance.worldSpaceCanvas, true);
+            GameObject pipeFlow = Util.KInstantiateUI(_pipeFlowPrefab, GameScreenManager.Instance.worldSpaceCanvas);
 
             Vector2I xy = Grid.PosToXY(conduitGO.transform.position);
 
@@ -431,39 +440,36 @@ namespace Pipe_Flow_Overlay
 
         private (GameObject pipeFlow, T flow) UpdateFlowDirection<T>(GameObject conduitGO, GameObject pipeFlow, T flow, bool active)
         {
-            _actionQueue.Enqueue(() =>
-            {
-                if (!ShowOverlay)
-                    active = false;
+            if (!ShowOverlay)
+                active = false;
 
-                bool is_endpoint = false;
-                if (flow.ToString().ToLower() == "none" && conduitGO != null)
+            bool is_endpoint = false;
+            if (flow.ToString().ToLower() == "none" && conduitGO != null)
+            {
+                Conduit conduit = conduitGO.GetComponent<Conduit>();
+                if (conduit != null)
                 {
-                    Conduit conduit = conduitGO.GetComponent<Conduit>();
-                    if (conduit != null)
+                    IUtilityNetworkMgr utilityNetworkMgr = conduit.GetNetworkManager();
+                    if (utilityNetworkMgr != null)
                     {
-                        IUtilityNetworkMgr utilityNetworkMgr = conduit.GetNetworkManager();
-                        if (utilityNetworkMgr != null)
+                        object endpoint = utilityNetworkMgr.GetEndpoint(conduit.Cell);
+                        if (endpoint != null)
                         {
-                            object endpoint = utilityNetworkMgr.GetEndpoint(conduit.Cell);
-                            if (endpoint != null)
-                            {
-                                is_endpoint = true;
-                            }
+                            is_endpoint = true;
                         }
                     }
                 }
+            }
 
-                if (!_flowSprites.TryGetValue(flow.ToString().ToLower(), out Sprite sprite) || is_endpoint)
-                {
-                    sprite = _clear;
-                }
+            if (!_flowSprites.TryGetValue(flow.ToString().ToLower(), out Sprite sprite) || is_endpoint)
+            {
+                sprite = _clear;
+            }
 
-                Image image = pipeFlow.GetComponent<Image>();
-                image.sprite = sprite;
+            Image image = pipeFlow.GetComponent<Image>();
+            image.sprite = sprite;
 
-                pipeFlow.SetActive(active);
-            });
+            pipeFlow.SetActive(active);
 
             return (pipeFlow, flow);
         }
