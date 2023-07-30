@@ -3,6 +3,6 @@
 bin/
 obj/
 /src/*/lib/
-/src/*/app.config
-/src/*/mod.yaml
-/src/*/mod_info.yaml
+/src/*/*/app.config
+/src/*/*/mod.yaml
+/src/*/*/mod_info.yaml
