@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.33920.266
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33829.357
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reworked Incubator", "Reworked Incubator\Reworked Incubator.csproj", "{680CBA8F-F853-4D8B-8984-CA2BC7D29BBD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReworkedIncubator", "Reworked Incubator\ReworkedIncubator.csproj", "{680CBA8F-F853-4D8B-8984-CA2BC7D29BBD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
