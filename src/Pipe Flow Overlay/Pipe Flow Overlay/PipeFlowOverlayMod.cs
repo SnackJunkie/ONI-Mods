@@ -379,6 +379,9 @@ namespace Pipe_Flow_Overlay
         {
             _actionQueue.Enqueue(() =>
             {
+                if (conduitGO.IsNullOrDestroyed())
+                    return;
+
                 bool active = _overlayMode == OverlayModes.LiquidConduits.ID;
                 _liquidConduitFlowRenders.AddOrUpdate(conduitGO,
                     _ => AddFlowDirection(conduitGO, delta, active),
@@ -396,6 +399,9 @@ namespace Pipe_Flow_Overlay
         {
             _actionQueue.Enqueue(() =>
             {
+                if (conduitGO.IsNullOrDestroyed())
+                    return;
+
                 bool active = _overlayMode == OverlayModes.GasConduits.ID;
                 _gasConduitFlowRenders.AddOrUpdate(conduitGO,
                     _ => AddFlowDirection(conduitGO, delta, active),
@@ -413,6 +419,9 @@ namespace Pipe_Flow_Overlay
         {
             _actionQueue.Enqueue(() =>
             {
+                if (conduitGO.IsNullOrDestroyed())
+                    return;
+
                 bool active = _overlayMode == OverlayModes.SolidConveyor.ID;
                 _solidConduitFlowRenders.AddOrUpdate(conduitGO,
                     _ => AddFlowDirection(conduitGO, flow, active),
