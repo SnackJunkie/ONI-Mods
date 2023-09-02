@@ -1,8 +1,6 @@
 ﻿using HarmonyLib;
 using KMod;
 using PeterHan.PLib.Core;
-using PeterHan.PLib.UI;
-using UnityEngine;
 
 namespace PipeFlowOverlay
 {
@@ -13,7 +11,16 @@ namespace PipeFlowOverlay
             base.OnLoad(harmony);
 
             PUtil.InitLibrary();
-            PipeFlowOverlayIconController.LoadSprites();
+        }
+
+        [HarmonyPatch(typeof(Game))]
+        [HarmonyPatch("OnSpawn")]
+        public class Game_OnSpawn_Patch
+        {
+            public static void Postfix()
+            {
+                PipeFlowOverlayIconController.Initialize();
+            }
         }
 
         [HarmonyPatch(typeof(Conduit))]
@@ -22,10 +29,9 @@ namespace PipeFlowOverlay
         {
             public static void Postfix(Conduit __instance)
             {
-                PUIUtils.AddPinkOverlay(__instance.GameObject);
-                GameObject pipeFlow = PUIElements.CreateUI(__instance.GameObject, "PipeFlow");
-                pipeFlow.AddComponent<PipeFlowOverlayIconController>();
-                pipeFlow.SetActive(true);
+                Util.KInstantiateUI(PipeFlowOverlayIconController.PipeFlowPrefab, GameScreenManager.Instance.worldSpaceCanvas)
+                    .GetComponent<PipeFlowOverlayIconController>()
+                    .SetConduit(__instance);
             }
         }
     }

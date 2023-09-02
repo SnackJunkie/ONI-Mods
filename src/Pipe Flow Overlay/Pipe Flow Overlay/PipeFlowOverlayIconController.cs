@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using PeterHan.PLib.UI;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -9,23 +10,27 @@ namespace PipeFlowOverlay
     internal class PipeFlowOverlayIconController : KMonoBehaviour
     {
         private const int TextureSize = 1024;
+        private const float TextureScale = 0.02f;
         internal static Dictionary<string, Sprite> _flowSprites;
         internal static Sprite _clear;
         private Conduit _conduit;
         private ConduitFlow _conduitFlow;
         private Image _image;
 
+        internal static GameObject PipeFlowPrefab { get; private set; }
         internal bool IconIsDirty { get; set; }
 
-        protected override void OnPrefabInit()
+        internal void SetConduit(Conduit conduit)
         {
-            _conduit = gameObject.GetComponentInParent<Conduit>();
+            _conduit = conduit;
             _conduitFlow = _conduit.GetFlowManager();
             _conduitFlow.onConduitsRebuilt += OnConduitsRebuilt;
-            _image = gameObject.AddComponent<Image>();
-            _image.type = Image.Type.Simple;
-            _image.raycastTarget = false;
-            _image.color = Color.white;
+            _image = gameObject.GetComponent<Image>();
+
+            Vector2I pos = Grid.PosToXY(conduit.GameObject.transform.position);
+            transform.position = new Vector3(pos.X + 0.5f, pos.Y + 0.5f, Grid.GetLayerZ(Grid.SceneLayer.SceneMAX));
+            transform.SetAsLastSibling();
+            gameObject.SetActive(true);
         }
 
         protected override void OnCleanUp()
@@ -42,21 +47,27 @@ namespace PipeFlowOverlay
         private void Update()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            if (IconIsDirty)
-            {
-                ConduitFlow conduitFlow = _conduit.GetFlowManager();
-                ConduitFlow.FlowDirections flowDirections = conduitFlow.GetPermittedFlow(_conduit.Cell);
-                string flow = flowDirections.ToString().Trim().ToLower();
-                if (!_flowSprites.TryGetValue(flow, out Sprite sprite))
-                    sprite = _clear;
-                _image.sprite = sprite;
+            if (!IconIsDirty)
+                return;
 
-                IconIsDirty = false;
+            if (_conduit.IsNullOrDestroyed())
+            {
+                Destroy(gameObject);
+                return;
             }
+
+            ConduitFlow conduitFlow = _conduit.GetFlowManager();
+            ConduitFlow.FlowDirections flowDirections = conduitFlow.GetPermittedFlow(_conduit.Cell);
+            string flow = flowDirections.ToString().Trim().ToLower();
+            if (!_flowSprites.TryGetValue(flow, out Sprite sprite))
+                sprite = _clear;
+            _image.sprite = sprite;
+
+            IconIsDirty = false;
         }
 
         #region Helper methods
-        internal static void LoadSprites()
+        internal static void Initialize()
         {
             const string flowSprite = @"Flow.png";
             const string noFlowSprite = @"NoFlow.png";
@@ -85,6 +96,17 @@ namespace PipeFlowOverlay
                     _flowSprites.Add(flow, GetSprite(flow));
                 }
             }
+
+            PipeFlowPrefab = new GameObject("PipeFlow");
+            PipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
+            PipeFlowPrefab.SetActive(false);
+            PipeFlowPrefab.transform.SetParent(GameScreenManager.Instance.worldSpaceCanvas.transform);
+            Image image = PipeFlowPrefab.AddComponent<Image>();
+            image.type = Image.Type.Simple;
+            image.raycastTarget = false;
+            image.color = Color.white;
+            image.sprite = _clear;
+            PipeFlowPrefab.AddComponent<PipeFlowOverlayIconController>();
 
             Sprite GetSprite(string flow)
             {
