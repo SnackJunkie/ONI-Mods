@@ -1,4 +1,5 @@
-﻿using PeterHan.PLib.UI;
+﻿using PipeFlowOverlay.Wrappers;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -13,32 +14,42 @@ namespace PipeFlowOverlay
         private const float TextureScale = 0.02f;
         internal static Dictionary<string, Sprite> _flowSprites;
         internal static Sprite _clear;
-        private Conduit _conduit;
-        private ConduitFlow _conduitFlow;
+        private IConduitWrapper _conduit;
+        private IConduitFlowWrapper _conduitFlow;
         private Image _image;
+        private string _flow;
 
-        internal static GameObject PipeFlowPrefab { get; private set; }
+        internal static GameObject PipeFlowPrefab;
+        internal bool FlowIsDirty { get; set; }
         internal bool IconIsDirty { get; set; }
 
-        internal void SetConduit(Conduit conduit)
+        internal void SetConduit(IConduitWrapper conduit)
         {
             _conduit = conduit;
             _conduitFlow = _conduit.GetFlowManager();
-            _conduitFlow.onConduitsRebuilt += OnConduitsRebuilt;
+            _conduitFlow.OnConduitsRebuilt += OnConduitsRebuilt;
+            PipeFlowOverlayPatches.OverlayModeChanged += OnOverlayModeChanged;
             _image = gameObject.GetComponent<Image>();
 
             Vector2I pos = Grid.PosToXY(conduit.GameObject.transform.position);
             transform.position = new Vector3(pos.X + 0.5f, pos.Y + 0.5f, Grid.GetLayerZ(Grid.SceneLayer.SceneMAX));
             transform.SetAsLastSibling();
+
             gameObject.SetActive(true);
         }
 
         protected override void OnCleanUp()
         {
-            _conduitFlow.onConduitsRebuilt -= OnConduitsRebuilt;
+            _conduitFlow.OnConduitsRebuilt -= OnConduitsRebuilt;
+            PipeFlowOverlayPatches.OverlayModeChanged -= OnOverlayModeChanged;
         }
 
         private void OnConduitsRebuilt()
+        {
+            FlowIsDirty = true;
+        }
+
+        private void OnOverlayModeChanged()
         {
             IconIsDirty = true;
         }
@@ -47,7 +58,13 @@ namespace PipeFlowOverlay
         private void Update()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            if (!IconIsDirty)
+            UpdateFlow();
+            UpdateIcon();
+        }
+
+        private void UpdateFlow()
+        {
+            if (!FlowIsDirty)
                 return;
 
             if (_conduit.IsNullOrDestroyed())
@@ -56,17 +73,51 @@ namespace PipeFlowOverlay
                 return;
             }
 
-            ConduitFlow conduitFlow = _conduit.GetFlowManager();
-            ConduitFlow.FlowDirections flowDirections = conduitFlow.GetPermittedFlow(_conduit.Cell);
-            string flow = flowDirections.ToString().Trim().ToLower();
-            if (!_flowSprites.TryGetValue(flow, out Sprite sprite))
-                sprite = _clear;
-            _image.sprite = sprite;
+            string flow = _conduitFlow.GetFlow(_conduit.Cell).Trim().ToLower();
+            CheckForPipeAtEndpoint(ref flow);
+
+            if (_flow != flow)
+            {
+                _flow = flow;
+                IconIsDirty = true;
+            }
+
+            FlowIsDirty = false;
+        }
+
+        private void UpdateIcon()
+        {
+            if (!IconIsDirty)
+                return;
+
+            if (PipeFlowOverlayPatches.OverlayMode == _conduitFlow.ConduitType)
+            {
+                if (!_flowSprites.TryGetValue(_flow, out Sprite sprite))
+                    sprite = _clear;
+                _image.sprite = sprite;
+                _image.color = Color.white;
+            }
+            else
+                _image.color = Color.clear;
 
             IconIsDirty = false;
         }
 
         #region Helper methods
+        private void CheckForPipeAtEndpoint(ref string flow)
+        {
+            if (!flow.Equals("none", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            IUtilityNetworkMgr utilityNetworkMgr = _conduit.GetNetworkManager();
+            if (utilityNetworkMgr == null)
+                return;
+
+            object endpoint = utilityNetworkMgr.GetEndpoint(_conduit.Cell);
+            if (endpoint != null)
+                flow = string.Empty;
+        }
+
         internal static void Initialize()
         {
             const string flowSprite = @"Flow.png";
@@ -100,7 +151,6 @@ namespace PipeFlowOverlay
             PipeFlowPrefab = new GameObject("PipeFlow");
             PipeFlowPrefab.transform.localScale = new Vector3(TextureScale, TextureScale, 1f);
             PipeFlowPrefab.SetActive(false);
-            PipeFlowPrefab.transform.SetParent(GameScreenManager.Instance.worldSpaceCanvas.transform);
             Image image = PipeFlowPrefab.AddComponent<Image>();
             image.type = Image.Type.Simple;
             image.raycastTarget = false;
