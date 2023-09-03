@@ -29,6 +29,7 @@ namespace PipeFlowOverlay
             _conduitFlow = _conduit.GetFlowManager();
             _conduitFlow.OnConduitsRebuilt += OnConduitsRebuilt;
             PipeFlowOverlayPatches.OverlayModeChanged += OnOverlayModeChanged;
+            PipeFlowOverlaySettings.ShowOverlayChanged += OnOverlayModeChanged;
             _image = gameObject.GetComponent<Image>();
 
             Vector2I pos = Grid.PosToXY(conduit.GameObject.transform.position);
@@ -42,6 +43,7 @@ namespace PipeFlowOverlay
         {
             _conduitFlow.OnConduitsRebuilt -= OnConduitsRebuilt;
             PipeFlowOverlayPatches.OverlayModeChanged -= OnOverlayModeChanged;
+            PipeFlowOverlaySettings.ShowOverlayChanged -= OnOverlayModeChanged;
         }
 
         private void OnConduitsRebuilt()
@@ -90,7 +92,8 @@ namespace PipeFlowOverlay
             if (!IconIsDirty)
                 return;
 
-            if (PipeFlowOverlayPatches.OverlayMode == _conduitFlow.ConduitType)
+            if (PipeFlowOverlaySettings.Instance.ShowOverlay
+                && PipeFlowOverlayPatches.OverlayMode == _conduitFlow.ConduitType)
             {
                 if (!_flowSprites.TryGetValue(_flow, out Sprite sprite))
                     sprite = _clear;

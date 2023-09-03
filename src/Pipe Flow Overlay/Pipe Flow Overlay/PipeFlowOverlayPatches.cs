@@ -1,7 +1,7 @@
 ﻿using HarmonyLib;
 using KMod;
 using PeterHan.PLib.Core;
-using PeterHan.PLib.Options;
+using PeterHan.PLib.Database;
 using PeterHan.PLib.UI;
 using PipeFlowOverlay.Wrappers;
 using System.Collections.Generic;
@@ -14,14 +14,13 @@ namespace PipeFlowOverlay
         internal static event System.Action ConduitsRebuilt;
         internal static event System.Action OverlayModeChanged;
         internal static ConduitType OverlayMode { get; private set; }
-        private static PipeFlowOverlaySettings Settings { get; set; }
 
         public override void OnLoad(Harmony harmony)
         {
             base.OnLoad(harmony);
 
             PUtil.InitLibrary();
-            Settings = POptions.ReadSettings<PipeFlowOverlaySettings>() ?? new PipeFlowOverlaySettings();
+            new PLocalization().Register();
         }
 
         [HarmonyPatch(typeof(Game))]
@@ -55,35 +54,23 @@ namespace PipeFlowOverlay
 
         [HarmonyPatch(typeof(OverlayLegend))]
         [HarmonyPatch("OnSpawn")]
-        public class OverlayLegend_SetLegend_Patch
+        public class OverlayLegend_OnSpawn_Patch
         {
             public static void Prefix(List<OverlayLegend.OverlayInfo> ___overlayInfoList)
             {
+                GameObject checkBoxPrefab = new PCheckBox("PipeFlowOverlayCheckBox")
+                {
+                    Text = PipeFlowOverlayStrings.UI.PIPEFLOWOVERLAY.CHECKBOXTEXT
+                }.Build();
+                checkBoxPrefab.AddComponent<PipeFlowOverlayCheckBoxController>();
+
                 foreach (OverlayLegend.OverlayInfo overlayInfo in ___overlayInfoList)
                 {
-                    if (overlayInfo.mode != OverlayModes.LiquidConduits.ID
-                        && overlayInfo.mode != OverlayModes.GasConduits.ID
-                        && overlayInfo.mode != OverlayModes.SolidConveyor.ID)
-                        continue;
-
-                    PCheckBox toggle = new PCheckBox("PipeFlowOverlayCheckBox")
-                    {
-                        Text = "Show Flow Overlay",
-                        InitialState = Settings.ShowOverlay ? 1 : 0,
-                        OnChecked = OnShowOverlayChecked
-                    };
-
-                    overlayInfo.diagrams.Add(toggle.Build());
+                    if (overlayInfo.mode == OverlayModes.LiquidConduits.ID
+                        || overlayInfo.mode == OverlayModes.GasConduits.ID
+                        || overlayInfo.mode == OverlayModes.SolidConveyor.ID)
+                        overlayInfo.diagrams.Add(checkBoxPrefab);
                 }
-            }
-
-            private static void OnShowOverlayChecked(GameObject source, int state)
-            {
-                Debug.Log($"{source.name}: {state}");
-                int newState = 1 - state;
-                PCheckBox.SetCheckState(source, newState);
-                Settings.ShowOverlay = newState == 1;
-                POptions.WriteSettings(Settings);
             }
         }
 

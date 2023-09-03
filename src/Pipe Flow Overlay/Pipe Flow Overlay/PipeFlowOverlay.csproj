@@ -91,7 +91,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PipeFlowOverlayCheckBoxController.cs" />
     <Compile Include="PipeFlowOverlaySettings.cs" />
+    <Compile Include="PipeFlowOverlayStrings.cs" />
     <Compile Include="Wrappers\ConduitFlowWrapper.cs" />
     <Compile Include="Wrappers\ConduitWrapper.cs" />
     <Compile Include="Wrappers\IConduitFlowWrapper.cs" />
