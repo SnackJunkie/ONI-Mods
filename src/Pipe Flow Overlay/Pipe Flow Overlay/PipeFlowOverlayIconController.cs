@@ -12,6 +12,7 @@ namespace PipeFlowOverlay
     {
         private const int TextureSize = 1024;
         private const float TextureScale = 0.02f;
+        private static readonly Color AFMColor = new Color(0.2f, 0.75f, 0.2f, 1f);
         internal static Dictionary<string, Sprite> _flowSprites;
         internal static Sprite _clear;
         private IConduitWrapper _conduit;
@@ -28,6 +29,7 @@ namespace PipeFlowOverlay
             _conduit = conduit;
             _conduitFlow = _conduit.GetFlowManager();
             _conduitFlow.OnConduitsRebuilt += OnConduitsRebuilt;
+            PipeFlowOverlayPatches.FlowForceChanged += OnConduitsRebuilt;
             PipeFlowOverlayPatches.OverlayModeChanged += OnOverlayModeChanged;
             PipeFlowOverlaySettings.ShowOverlayChanged += OnOverlayModeChanged;
             _image = gameObject.GetComponent<Image>();
@@ -42,6 +44,7 @@ namespace PipeFlowOverlay
         protected override void OnCleanUp()
         {
             _conduitFlow.OnConduitsRebuilt -= OnConduitsRebuilt;
+            PipeFlowOverlayPatches.FlowForceChanged -= OnConduitsRebuilt;
             PipeFlowOverlayPatches.OverlayModeChanged -= OnOverlayModeChanged;
             PipeFlowOverlaySettings.ShowOverlayChanged -= OnOverlayModeChanged;
         }
@@ -57,7 +60,7 @@ namespace PipeFlowOverlay
         }
 
 #pragma warning disable IDE0051 // Remove unused private members
-        private void Update()
+        private void LateUpdate()
 #pragma warning restore IDE0051 // Remove unused private members
         {
             UpdateFlow();
@@ -77,6 +80,7 @@ namespace PipeFlowOverlay
 
             string flow = _conduitFlow.GetFlow(_conduit.Cell).Trim().ToLower();
             CheckForPipeAtEndpoint(ref flow);
+            CheckForAFMCrossingCmp(ref flow);
 
             if (_flow != flow)
             {
@@ -98,7 +102,7 @@ namespace PipeFlowOverlay
                 if (!_flowSprites.TryGetValue(_flow, out Sprite sprite))
                     sprite = _clear;
                 _image.sprite = sprite;
-                _image.color = Color.white;
+                _image.color = PipeFlowOverlayOptions.Get().UseAFMArrows ? AFMColor : Color.white;
             }
             else
                 _image.color = Color.clear;
@@ -121,10 +125,19 @@ namespace PipeFlowOverlay
                 flow = string.Empty;
         }
 
+        private void CheckForAFMCrossingCmp(ref string flow)
+        {
+            if (PipeFlowOverlaySettings.Instance.AFMCrossingCmp == null)
+                return;
+
+            if (_conduit.GameObject.TryGetComponent(PipeFlowOverlaySettings.Instance.AFMCrossingCmp, out _))
+                flow = string.Empty;
+        }
+
         internal static void Initialize()
         {
-            const string flowSprite = @"Flow.png";
-            const string noFlowSprite = @"NoFlow.png";
+            string flowSprite = $"Flow{(PipeFlowOverlayOptions.Get().UseAFMArrows ? "_afm" : string.Empty)}.png";
+            const string noFlowSprite = "NoFlow.png";
 
             Texture2D rightArrow = LoadTexture(flowSprite);
             Texture2D downArrow = LoadTexture(flowSprite, 1);

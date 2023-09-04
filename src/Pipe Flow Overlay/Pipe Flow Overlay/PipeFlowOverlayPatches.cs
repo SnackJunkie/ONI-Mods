@@ -2,9 +2,12 @@
 using KMod;
 using PeterHan.PLib.Core;
 using PeterHan.PLib.Database;
+using PeterHan.PLib.Options;
 using PeterHan.PLib.UI;
 using PipeFlowOverlay.Wrappers;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace PipeFlowOverlay
@@ -13,14 +16,47 @@ namespace PipeFlowOverlay
     {
         internal static event System.Action ConduitsRebuilt;
         internal static event System.Action OverlayModeChanged;
+        internal static event System.Action FlowForceChanged;
         internal static ConduitType OverlayMode { get; private set; }
 
         public override void OnLoad(Harmony harmony)
         {
             base.OnLoad(harmony);
 
+            LocString.CreateLocStringKeys(typeof(PipeFlowOverlayStrings.UI));
             PUtil.InitLibrary();
             new PLocalization().Register();
+            new POptions().RegisterOptions(this, typeof(PipeFlowOverlayOptions));
+        }
+
+        public override void OnAllModsLoaded(Harmony harmony, IReadOnlyList<Mod> mods)
+        {
+            Mod afmMod = mods.FirstOrDefault(mod => mod.staticID == "Glampi.AdvancedFlowManagement");
+            if (afmMod == null)
+                return;
+            
+            System.Type afmUtils = PPatchTools.GetTypeSafe("AdvancedFlowManagement.Utils");
+            if (afmUtils == null)
+                return;
+
+            System.Type afmCrossingCmp = PPatchTools.GetTypeSafe("AdvancedFlowManagement.CrossingCmp");
+            if (afmCrossingCmp == null)
+                return;
+
+            PipeFlowOverlaySettings.Instance.AFMCrossingCmp = afmCrossingCmp;
+
+            MethodInfo afmUpdateCrossingDirection = PPatchTools.GetMethodSafe(afmUtils, "UpdateCrossingDirection", true, afmCrossingCmp, typeof(sbyte));
+            if (afmUpdateCrossingDirection == null)
+                return;
+
+            MethodInfo methodInfo = typeof(PipeFlowOverlayPatches).GetMethod(nameof(AFM_UpdateCrossingDirection_Patch), BindingFlags.Static | BindingFlags.NonPublic);
+            HarmonyMethod harmonyMethod = new HarmonyMethod(methodInfo);
+            harmony.Patch(afmUtils, afmUpdateCrossingDirection.Name, postfix: harmonyMethod);
+        }
+
+        private static void AFM_UpdateCrossingDirection_Patch()
+        {
+            FlowForceChanged?.Invoke();
         }
 
         [HarmonyPatch(typeof(Game))]

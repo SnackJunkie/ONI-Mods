@@ -7,9 +7,11 @@ namespace PipeFlowOverlay
     internal class PipeFlowOverlaySettings
     {
         [JsonProperty]
-        public bool ShowOverlay { get; set; }
+        internal bool ShowOverlay { get; set; }
 
-        public static PipeFlowOverlaySettings Instance { get; }
+        internal System.Type AFMCrossingCmp { get; set; }
+
+        internal static PipeFlowOverlaySettings Instance { get; }
         internal static event System.Action ShowOverlayChanged;
 
         static PipeFlowOverlaySettings()
