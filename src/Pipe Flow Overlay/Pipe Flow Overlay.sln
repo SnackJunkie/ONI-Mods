@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.33423.256
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34009.444
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pipe Flow Overlay", "Pipe Flow Overlay\Pipe Flow Overlay.csproj", "{54F6648C-7E3E-455D-B57A-06B68E30532D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PipeFlowOverlay", "Pipe Flow Overlay\PipeFlowOverlay.csproj", "{54F6648C-7E3E-455D-B57A-06B68E30532D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
