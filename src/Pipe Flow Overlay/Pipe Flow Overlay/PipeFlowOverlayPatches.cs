@@ -6,6 +6,7 @@ using PeterHan.PLib.Options;
 using PeterHan.PLib.UI;
 using PipeFlowOverlay.Wrappers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -26,7 +27,8 @@ namespace PipeFlowOverlay
             LocString.CreateLocStringKeys(typeof(PipeFlowOverlayStrings.UI));
             PUtil.InitLibrary();
             new PLocalization().Register();
-            new POptions().RegisterOptions(this, typeof(PipeFlowOverlayOptions));
+            new POptions().RegisterOptions(this, typeof(PipeFlowOverlaySettings));
+            Localization.GenerateStringsTemplate(typeof(PipeFlowOverlayStrings), Path.Combine(path, PLocalization.TRANSLATIONS_DIR));
         }
 
         public override void OnAllModsLoaded(Harmony harmony, IReadOnlyList<Mod> mods)
@@ -96,7 +98,7 @@ namespace PipeFlowOverlay
             {
                 GameObject checkBoxPrefab = new PCheckBox("PipeFlowOverlayCheckBox")
                 {
-                    Text = PipeFlowOverlayStrings.UI.PIPEFLOWOVERLAY.CHECKBOXTEXT
+                    Text = PipeFlowOverlayStrings.UI.FRONTEND.PIPEFLOWOVERLAY.SHOWOVERLAYCHECKBOXTEXT
                 }.Build();
                 checkBoxPrefab.AddComponent<PipeFlowOverlayCheckBoxController>();
 

@@ -8,6 +8,7 @@
             {
                 public static class PIPEFLOWOVERLAY
                 {
+                    public static LocString SHOWOVERLAYCHECKBOXTEXT = "Show Flow Overlay";
                     public static LocString USEAFMARROWS = "Advanced Flow Management style arrows";
                 }
             }
@@ -18,11 +19,6 @@
                 {
                     public static LocString USEAFMARROWS = "Alternate arrow style for improved compatibility with Advanced Flow Management by Glampi";
                 }
-            }
-
-            public static class PIPEFLOWOVERLAY
-            {
-                public static LocString CHECKBOXTEXT = "Show Flow Overlay";
             }
         }
     }

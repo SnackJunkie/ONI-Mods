@@ -102,7 +102,7 @@ namespace PipeFlowOverlay
                 if (!_flowSprites.TryGetValue(_flow, out Sprite sprite))
                     sprite = _clear;
                 _image.sprite = sprite;
-                _image.color = PipeFlowOverlayOptions.Get().UseAFMArrows ? AFMColor : Color.white;
+                _image.color = PipeFlowOverlaySettings.Instance.UseAFMArrows ? AFMColor : Color.white;
             }
             else
                 _image.color = Color.clear;
@@ -136,7 +136,7 @@ namespace PipeFlowOverlay
 
         internal static void Initialize()
         {
-            string flowSprite = $"Flow{(PipeFlowOverlayOptions.Get().UseAFMArrows ? "_afm" : string.Empty)}.png";
+            string flowSprite = $"Flow{(PipeFlowOverlaySettings.Instance.UseAFMArrows ? "_afm" : string.Empty)}.png";
             const string noFlowSprite = "NoFlow.png";
 
             Texture2D rightArrow = LoadTexture(flowSprite);

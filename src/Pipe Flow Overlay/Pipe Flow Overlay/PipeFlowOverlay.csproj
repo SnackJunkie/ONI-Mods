@@ -92,7 +92,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PipeFlowOverlayCheckBoxController.cs" />
-    <Compile Include="PipeFlowOverlayOptions.cs" />
     <Compile Include="PipeFlowOverlaySettings.cs" />
     <Compile Include="PipeFlowOverlayStrings.cs" />
     <Compile Include="Wrappers\ConduitFlowWrapper.cs" />
@@ -148,7 +147,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>"$(ILMergeConsolePath)" /lib:"C:\SteamLibrary\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed" /ndebug /out:$(TargetName)Merged.dll $(TargetName).dll PLib.dll /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319</PostBuildEvent>
+    <PostBuildEvent>"$(ILMergeConsolePath)" /lib:"C:\SteamLibrary\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed" /ndebug /out:$(TargetName).dll $(TargetName).dll PLib.dll /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319</PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
