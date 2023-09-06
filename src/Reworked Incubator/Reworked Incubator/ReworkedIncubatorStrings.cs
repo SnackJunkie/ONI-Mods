@@ -25,6 +25,7 @@
                     public static LocString EXHAUSTHEAT = "Exhaust Heat";
                     public static LocString INCUBATIONRATE = "Incubation Rate";
                     public static LocString FETCHAUTOMATION = "Enable Automation";
+                    public static LocString XPMULTIPIER = "Ranching XP Multiplier";
                 }
             }
 
@@ -38,6 +39,7 @@
                     public static LocString INCUBATIONRATE = "% increase in incubation rate from powered incubator.";
                     public static LocString FETCHAUTOMATION = "If enabled, errands to place an egg in the incubator can be disabled via automation.";
                     public static LocString AUTOMATIONPRECONDITION = "Disabled by automation";
+                    public static LocString XPMULTIPIER = "Multiplier for other sources of Ranching XP, to make up for the missing lullabying XP.";
                 }
             }
         }

@@ -6,6 +6,7 @@ using PeterHan.PLib.Database;
 using PeterHan.PLib.Options;
 using STRINGS;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 
 namespace ReworkedIncubator
@@ -26,6 +27,7 @@ namespace ReworkedIncubator
             PUtil.InitLibrary();
             new PLocalization().Register();
             new POptions().RegisterOptions(this, typeof(ReworkedIncubatorSettings));
+            Localization.GenerateStringsTemplate(typeof(ReworkedIncubatorSettings), Path.Combine(path, PLocalization.TRANSLATIONS_DIR));
 
             IsAutomationEnabled = new Chore.Precondition
             {
@@ -159,6 +161,28 @@ namespace ReworkedIncubator
                 Tag requestedEntityAdditionalFilterTag = incubator.requestedEntityAdditionalFilterTag;
                 incubator.CancelActiveRequest();
                 incubator.CreateOrder(requestedEntityTag, requestedEntityAdditionalFilterTag);
+            }
+        }
+
+        [HarmonyPatch(typeof(Workable))]
+        [HarmonyPatch(nameof(Workable.GetSkillExperienceMultiplier))]
+        public class Workable_GetSkillExperienceMultiplier_Patch
+        {
+            public static void Postfix(ref float __result, string ___skillExperienceSkillGroup)
+            {
+                if (___skillExperienceSkillGroup == Db.Get().SkillGroups.Ranching.Id)
+                    __result *= Settings.XPMultiplier;
+            }
+        }
+
+        [HarmonyPatch(typeof(Workable))]
+        [HarmonyPatch(nameof(Workable.GetAttributeExperienceMultiplier))]
+        public class Workable_GetAttributeExperienceMultiplier_Patch
+        {
+            public static void Postfix(ref float __result, string ___skillExperienceSkillGroup)
+            {
+                if (___skillExperienceSkillGroup == Db.Get().SkillGroups.Ranching.Id)
+                    __result *= Settings.XPMultiplier;
             }
         }
     }

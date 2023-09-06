@@ -5,6 +5,7 @@ namespace ReworkedIncubator
 {
     [JsonObject(MemberSerialization.OptIn)]
     [RestartRequired]
+    [ConfigFile(SharedConfigLocation: true)]
     public class ReworkedIncubatorSettings
     {
         [Option("STRINGS.UI.FRONTEND.REWORKEDINCUBATOR.POWER", "STRINGS.UI.TOOLTIPS.REWORKEDINCUBATOR.POWER")]
@@ -27,6 +28,11 @@ namespace ReworkedIncubator
         [JsonProperty]
         public float IncubationRate { get; set; }
 
+        [Option("STRINGS.UI.FRONTEND.REWORKEDINCUBATOR.XPMULTIPIER", "STRINGS.UI.TOOLTIPS.REWORKEDINCUBATOR.XPMULTIPIER")]
+        [Limit(0, 100)]
+        [JsonProperty]
+        public float XPMultiplier { get; set; }
+
         [Option("STRINGS.UI.FRONTEND.REWORKEDINCUBATOR.FETCHAUTOMATION", "STRINGS.UI.TOOLTIPS.REWORKEDINCUBATOR.FETCHAUTOMATION")]
         [JsonProperty]
         public bool FetchAutomation { get; set; }
@@ -38,6 +44,7 @@ namespace ReworkedIncubator
             ExhaustHeat = 250;
             IncubationRate = 400;
             FetchAutomation = true;
+            XPMultiplier = 1;
         }
     }
 }
