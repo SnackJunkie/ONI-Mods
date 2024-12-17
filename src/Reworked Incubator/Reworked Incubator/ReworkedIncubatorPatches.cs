@@ -137,8 +137,9 @@ namespace ReworkedIncubator
             public static void Postfix(SingleEntityReceptacle __instance)
             {
                 if (Settings.FetchAutomation
-                    && __instance is EggIncubator incubator)
-                    incubator.GetActiveRequest.AddPrecondition(IsAutomationEnabled, incubator);
+                    && __instance is EggIncubator incubator
+                    && incubator.GetActiveRequest is FetchChore chore)
+                    chore.AddPrecondition(IsAutomationEnabled, incubator);
             }
         }
 

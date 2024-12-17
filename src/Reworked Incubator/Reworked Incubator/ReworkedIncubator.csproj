@@ -36,6 +36,9 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\lib\0Harmony.dll</HintPath>
@@ -53,8 +56,8 @@
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="PLib, Version=4.13.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\PLib.4.13.0\lib\net471\PLib.dll</HintPath>
+    <Reference Include="PLib, Version=4.16.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\PLib.4.16.0\lib\net471\PLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -93,13 +96,13 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>"$(ILMergeConsolePath)" /lib:"C:\Games\Steam\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed" /ndebug /out:$(TargetName).dll $(TargetName).dll PLib.dll /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319</PostBuildEvent>
+  </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\ILMerge.3.0.41\build\ILMerge.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\ILMerge.3.0.41\build\ILMerge.props'))" />
   </Target>
-  <PropertyGroup>
-    <PostBuildEvent>"$(ILMergeConsolePath)" /lib:"C:\SteamLibrary\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed" /ndebug /out:$(TargetName).dll $(TargetName).dll PLib.dll /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319</PostBuildEvent>
-  </PropertyGroup>
 </Project>
